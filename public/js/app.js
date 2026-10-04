@@ -45,8 +45,8 @@ const Auth = {
     return (
       path === "/" ||
       path === "" ||
-      path.endsWith("/index.html") ||
-      path.endsWith("index.html")
+      path.endsWith("/login.html") ||
+      path.endsWith("login.html")
     );
   },
 
@@ -54,7 +54,7 @@ const Auth = {
     if (this.isLoginPage()) return true;
 
     if (!this.isLoggedIn()) {
-      window.location.href = "index.html";
+      window.location.href = "login.html";
       return false;
     }
 
@@ -63,7 +63,7 @@ const Auth = {
 
   logout() {
     this.clear();
-    window.location.href = "index.html";
+    window.location.href = "login.html";
   },
 };
 
@@ -109,7 +109,7 @@ const API = {
       Auth.clear();
 
       if (!Auth.isLoginPage()) {
-        window.location.href = "index.html";
+        window.location.href = "login.html";
       }
 
       return null;
@@ -369,7 +369,7 @@ const Toast = {
       position:fixed;
       top:80px;
       left:20px;
-      z-index:99999;
+      z-login:99999;
       display:flex;
       flex-direction:column;
       gap:10px;
@@ -468,7 +468,7 @@ function getCurrentPage() {
   const path = window.location.pathname || "";
   const fileName = path.split("/").pop().toLowerCase();
 
-  return fileName || "index.html";
+  return fileName || "login.html";
 }
 
 function initActiveSidebar() {
@@ -622,7 +622,7 @@ function initLogout() {
 
       sessionStorage.clear();
 
-      window.location.href = "index.html";
+      window.location.href = "login.html";
     };
   });
 }
@@ -980,17 +980,24 @@ function initLoginPage() {
     }
   });
 
-  const toggle = document.getElementById("togglePass");
+   const toggle = document.getElementById("togglePass");
+   const toggleIcon = document.getElementById("togglePassIcon");
 
-  toggle?.addEventListener("click", () => {
-    if (!password) return;
+   toggle?.addEventListener("click", () => {
+     if (!password) return;
 
-    password.type = password.type === "password" ? "text" : "password";
+     if (password.type === "password") {
+       password.type = "text";
 
-    toggle.classList.toggle("bi-eye");
+       toggleIcon?.classList.remove("bi-eye");
+       toggleIcon?.classList.add("bi-eye-slash");
+     } else {
+       password.type = "password";
 
-    toggle.classList.toggle("bi-eye-slash");
-  });
+       toggleIcon?.classList.remove("bi-eye-slash");
+       toggleIcon?.classList.add("bi-eye");
+     }
+   });
 }
 
 /* =========================================================
