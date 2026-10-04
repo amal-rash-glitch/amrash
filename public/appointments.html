@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AmRash | إدارة المواعيد</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-box"><i class="bi bi-hospital"></i></div>
+      <span class="name">AmRash</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">الرئيسية</div>
+      <a href="dashboard.html" class="nav-link"><i class="bi bi-grid-1x2-fill"></i> لوحة التحكم</a>
+      <a href="appointments.html" class="nav-link active"><i class="bi bi-calendar-check"></i> المواعيد</a>
+      <div class="nav-section-title">الإدارة الطبية</div>
+      <a href="patients.html" class="nav-link"><i class="bi bi-people"></i> المرضى</a>
+      <a href="doctors.html" class="nav-link"><i class="bi bi-person-badge"></i> الأطباء</a>
+      <a href="departments.html" class="nav-link"><i class="bi bi-diagram-3"></i> الأقسام</a>
+      <a href="services.html" class="nav-link"><i class="bi bi-clipboard2-pulse"></i> الخدمات الطبية</a>
+      <div class="nav-section-title">النظام</div>
+      <a href="reports.html" class="nav-link"><i class="bi bi-bar-chart-line"></i> التقارير</a>
+      <a href="settings.html" class="nav-link"><i class="bi bi-gear"></i> الإعدادات</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#" class="nav-link" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> تسجيل الخروج</a>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="main-area">
+    <header class="topbar">
+      <button class="btn-mobile-toggle" id="mobileToggle"><i class="bi bi-list"></i></button>
+      <h1 class="page-title">إدارة المواعيد</h1>
+      <div class="topbar-right">
+        <button class="icon-btn" data-bs-toggle="dropdown"><i class="bi bi-bell"></i><span class="badge-dot"></span></button>
+        <ul class="dropdown-menu dropdown-menu-end shadow">
+          <li><h6 class="dropdown-header">الإشعارات</h6></li>
+          <li><a class="dropdown-item" href="#">موعد جديد للمريض أحمد سامي</a></li>
+        </ul>
+        <div class="dropdown">
+          <div class="user-chip" data-bs-toggle="dropdown">
+            <div class="avatar">أ</div>
+            <div><div class="u-name">أحمد رشاد</div><div class="u-role">مدير النظام</div></div>
+          </div>
+          <ul class="dropdown-menu dropdown-menu-end shadow">
+            <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i> ملفي الشخصي</a></li>
+            <li><a class="dropdown-item" href="settings.html"><i class="bi bi-gear me-2"></i> الإعدادات</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#" id="logoutBtn2"><i class="bi bi-box-arrow-right me-2"></i> تسجيل الخروج</a></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <div class="page-head">
+        <div>
+          <h1>المواعيد</h1>
+          <p>حجز ومتابعة مواعيد المرضى مع الأطباء</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-soft" onclick="window.print()"><i class="bi bi-printer me-1"></i> طباعة</button>
+          <button class="btn btn-soft" id="exportCsvBtn"><i class="bi bi-file-earmark-excel me-1"></i> تصدير</button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#appointmentModal" id="addAppointmentBtn">
+            <i class="bi bi-calendar-plus me-1"></i> حجز موعد
+          </button>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card">
+            <div class="stat-icon orange"><i class="bi bi-hourglass-split"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" data-stat="apptPending">0</div>
+              <div class="stat-label">قيد الانتظار</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card">
+            <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" data-stat="apptConfirmed">0</div>
+              <div class="stat-label">مؤكد</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card">
+            <div class="stat-icon blue"><i class="bi bi-clipboard-check-fill"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" data-stat="apptCompleted">0</div>
+              <div class="stat-label">مكتمل</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card">
+            <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" data-stat="apptCancelled">0</div>
+              <div class="stat-label">ملغي</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card">
+            <div class="stat-icon orange"><i class="bi bi-person-dash-fill"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" data-stat="apptNoShow">0</div>
+              <div class="stat-label">لم يحضر</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card">
+            <div class="stat-icon purple"><i class="bi bi-calendar-week-fill"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" data-stat="apptTotal">0</div>
+              <div class="stat-label">إجمالي المواعيد</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-box mb-3">
+        <div class="card-body-p">
+          <div class="toolbar mb-0">
+            <div class="search-input-wrap">
+              <i class="bi bi-search"></i>
+              <input type="text" class="form-control" id="apptSearch" placeholder="ابحث باسم المريض أو رقم الموعد...">
+            </div>
+            <select class="form-select" id="filterDepartment" style="max-width:190px">
+              <option value="">كل الأقسام</option>
+            </select>
+            <select class="form-select" id="filterDoctor" style="max-width:190px">
+              <option value="">كل الأطباء</option>
+            </select>
+            <select class="form-select" id="filterStatus" style="max-width:160px">
+              <option value="">كل الحالات</option>
+              <option value="pending">قيد الانتظار</option>
+              <option value="confirmed">مؤكد</option>
+              <option value="completed">مكتمل</option>
+              <option value="cancelled">ملغي</option>
+              <option value="noshow">لم يحضر</option>
+            </select>
+            <select class="form-select" id="filterType" style="max-width:160px">
+              <option value="">كل الأنواع</option>
+              <option value="كشف جديد">كشف جديد</option>
+              <option value="متابعة">متابعة</option>
+              <option value="استشارة">استشارة</option>
+              <option value="طوارئ">طوارئ</option>
+            </select>
+            <input type="date" class="form-control" id="filterDate" style="max-width:170px">
+            <button class="btn btn-soft" id="resetFilters"><i class="bi bi-arrow-counterclockwise me-1"></i> إعادة</button>
+          </div>
+        </div>
+      </div>
+
+      <ul class="nav nav-pills mb-3 gap-2" id="apptTabs">
+        <li class="nav-item"><button class="nav-link active" data-tab="all">كل المواعيد</button></li>
+        <li class="nav-item"><button class="nav-link" data-tab="today">مواعيد اليوم</button></li>
+        <li class="nav-item"><button class="nav-link" data-tab="upcoming">القادمة</button></li>
+      </ul>
+
+      <div class="card-box">
+        <div class="card-head">
+          <h3>قائمة المواعيد (<span id="apptCount">0</span>)</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="table-box">
+            <thead>
+              <tr>
+                <th>رقم الموعد</th>
+                <th>المريض</th>
+                <th>الطبيب</th>
+                <th>القسم</th>
+                <th>التاريخ</th>
+                <th>الوقت</th>
+                <th>نوع الزيارة</th>
+                <th>الحالة</th>
+                <th style="width:170px">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="appointmentsTableBody"></tbody>
+          </table>
+        </div>
+        <div class="card-body-p d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span id="paginationInfo" style="font-size:13.5px;color:var(--brand-gray)"></span>
+          <nav><ul class="pagination pagination-sm mb-0" id="pagination"></ul></nav>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div class="modal fade" id="appointmentModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="appointmentModalTitle">حجز موعد جديد</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="appointmentForm">
+        <div class="modal-body">
+          <input type="hidden" id="apptId">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">المريض *</label>
+              <select class="form-select" id="aPatient" required></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">القسم *</label>
+              <select class="form-select" id="aDepartment" required></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">الطبيب *</label>
+              <select class="form-select" id="aDoctor" required></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">الخدمة</label>
+              <select class="form-select" id="aService"></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">التاريخ *</label>
+              <input type="date" class="form-control" id="aDate" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">الوقت *</label>
+              <input type="time" class="form-control" id="aTime" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">نوع الزيارة *</label>
+              <select class="form-select" id="aType" required>
+                <option value="كشف جديد">كشف جديد</option>
+                <option value="متابعة">متابعة</option>
+                <option value="استشارة">استشارة</option>
+                <option value="طوارئ">طوارئ</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">الحالة *</label>
+              <select class="form-select" id="aStatus" required>
+                <option value="pending">قيد الانتظار</option>
+                <option value="confirmed">مؤكد</option>
+                <option value="completed">مكتمل</option>
+                <option value="cancelled">ملغي</option>
+                <option value="noshow">لم يحضر</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">رقم الهاتف للتواصل</label>
+              <input type="tel" class="form-control" id="aPhone">
+            </div>
+            <div class="col-12">
+              <label class="form-label">ملاحظات</label>
+              <textarea class="form-control" id="aNotes" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="appointmentViewModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">تفاصيل الموعد</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="appointmentViewBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إغلاق</button>
+        <button type="button" class="btn btn-primary" id="printApptBtn"><i class="bi bi-printer me-1"></i> طباعة</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i> تأكيد الحذف</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">هل أنت متأكد من حذف هذا الموعد؟ لا يمكن التراجع عن هذا الإجراء.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">حذف نهائي</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="JS/app.js"></script>
+</body>
+</html>

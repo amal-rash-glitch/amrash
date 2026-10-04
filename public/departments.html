@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AmRash | إدارة الأقسام</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-box"><i class="bi bi-hospital"></i></div>
+      <span class="name">AmRash</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">الرئيسية</div>
+      <a href="dashboard.html" class="nav-link"><i class="bi bi-grid-1x2-fill"></i> لوحة التحكم</a>
+      <a href="appointments.html" class="nav-link"><i class="bi bi-calendar-check"></i> المواعيد</a>
+      <div class="nav-section-title">الإدارة الطبية</div>
+      <a href="patients.html" class="nav-link"><i class="bi bi-people"></i> المرضى</a>
+      <a href="doctors.html" class="nav-link"><i class="bi bi-person-badge"></i> الأطباء</a>
+      <a href="departments.html" class="nav-link active"><i class="bi bi-diagram-3"></i> الأقسام</a>
+      <a href="services.html" class="nav-link"><i class="bi bi-clipboard2-pulse"></i> الخدمات الطبية</a>
+      <div class="nav-section-title">النظام</div>
+      <a href="reports.html" class="nav-link"><i class="bi bi-bar-chart-line"></i> التقارير</a>
+      <a href="settings.html" class="nav-link"><i class="bi bi-gear"></i> الإعدادات</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#" class="nav-link" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> تسجيل الخروج</a>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="main-area">
+    <header class="topbar">
+      <button class="btn-mobile-toggle" id="mobileToggle"><i class="bi bi-list"></i></button>
+      <h1 class="page-title">إدارة الأقسام</h1>
+      <div class="topbar-right">
+        <button class="icon-btn" data-bs-toggle="dropdown"><i class="bi bi-bell"></i><span class="badge-dot"></span></button>
+        <ul class="dropdown-menu dropdown-menu-end shadow">
+          <li><h6 class="dropdown-header">الإشعارات</h6></li>
+          <li><a class="dropdown-item" href="#">تم تحديث بيانات قسم</a></li>
+        </ul>
+        <div class="dropdown">
+          <div class="user-chip" data-bs-toggle="dropdown">
+            <div class="avatar">أ</div>
+            <div><div class="u-name">أحمد رشاد</div><div class="u-role">مدير النظام</div></div>
+          </div>
+          <ul class="dropdown-menu dropdown-menu-end shadow">
+            <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i> ملفي الشخصي</a></li>
+            <li><a class="dropdown-item" href="settings.html"><i class="bi bi-gear me-2"></i> الإعدادات</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#" id="logoutBtn2"><i class="bi bi-box-arrow-right me-2"></i> تسجيل الخروج</a></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <div class="page-head">
+        <div>
+          <h1>الأقسام</h1>
+          <p>إدارة أقسام المركز الطبي وربطها بالأطباء والخدمات</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-soft" onclick="window.print()"><i class="bi bi-printer me-1"></i> طباعة</button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#departmentModal" id="addDepartmentBtn">
+            <i class="bi bi-plus-lg me-1"></i> إضافة قسم
+          </button>
+        </div>
+      </div>
+
+      <!-- عرض شبكي للأقسام -->
+      <div class="toolbar">
+        <div class="search-input-wrap">
+          <i class="bi bi-search"></i>
+          <input type="text" class="form-control" id="departmentSearch" placeholder="ابحث باسم القسم...">
+        </div>
+        <select class="form-select" id="filterStatus" style="max-width:180px">
+          <option value="">كل الحالات</option>
+          <option value="active">مفعّل</option>
+          <option value="inactive">معطّل</option>
+        </select>
+        <button class="btn btn-soft" id="resetFilters"><i class="bi bi-arrow-counterclockwise me-1"></i> إعادة</button>
+      </div>
+
+      <div class="row g-3" id="departmentsGrid"></div>
+
+      <div class="card-box mt-3 d-none" id="departmentsEmpty">
+        <div class="empty-state">
+          <i class="bi bi-diagram-3"></i>
+          <p>لا توجد أقسام مطابقة للبحث</p>
+        </div>
+      </div>
+
+      <!-- جدول الأقسام -->
+      <div class="card-box mt-3">
+        <div class="card-head"><h3>جدول الأقسام (<span id="departmentCount">0</span>)</h3></div>
+        <div class="table-responsive">
+          <table class="table-box">
+            <thead>
+              <tr>
+                <th>الأيقونة</th>
+                <th>اسم القسم</th>
+                <th>الوصف</th>
+                <th>عدد الأطباء</th>
+                <th>عدد الخدمات</th>
+                <th>عدد المرضى</th>
+                <th>الحالة</th>
+                <th style="width:140px">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="departmentsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- نافذة إضافة/تعديل قسم -->
+<div class="modal fade" id="departmentModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="departmentModalTitle">إضافة قسم جديد</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="departmentForm">
+        <div class="modal-body">
+          <input type="hidden" id="departmentId">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">اسم القسم *</label>
+              <input type="text" class="form-control" id="depName" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">الحالة</label>
+              <select class="form-select" id="depStatus">
+                <option value="active">مفعّل</option>
+                <option value="inactive">معطّل</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">الوصف</label>
+              <textarea class="form-control" id="depDescription" rows="2"></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">أيقونة القسم</label>
+              <select class="form-select" id="depIcon">
+                <option value="bi-heart-pulse">قلب ونبض — bi-heart-pulse</option>
+                <option value="bi-lungs">جهاز تنفسي — bi-lungs</option>
+                <option value="bi-activity">مخ وأعصاب — bi-activity</option>
+                <option value="bi-bandaid">عظام وجراحة — bi-bandaid</option>
+                <option value="bi-eyedropper">عيون — bi-eyedropper</option>
+                <option value="bi-ear">أنف وأذن — bi-ear</option>
+                <option value="bi-gender-female">نساء وتوليد — bi-gender-female</option>
+                <option value="bi-emoji-smile">أسنان — bi-emoji-smile</option>
+                <option value="bi-capsule">صيدلية — bi-capsule</option>
+                <option value="bi-droplet">مختبر — bi-droplet</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">معاينة</label>
+              <div class="d-flex align-items-center gap-2 p-2" style="border:1px solid var(--brand-border);border-radius:10px">
+                <span style="font-size:22px;color:var(--brand-primary)"><i class="bi bi-heart-pulse" id="iconPreview"></i></span>
+                <span style="font-size:14px;color:var(--brand-gray)">شكل الأيقونة في القائمة</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- تفاصيل القسم -->
+<div class="modal fade" id="departmentViewModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">تفاصيل القسم</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="departmentViewBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إغلاق</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i> تأكيد الحذف</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">هل أنت متأكد من حذف هذا القسم؟ سيتم فك ارتباطه بالأطباء والخدمات.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">حذف نهائي</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="JS/app.js"></script>
+</body>
+</html>

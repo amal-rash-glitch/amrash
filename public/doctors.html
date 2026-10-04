@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AmRash | إدارة الأطباء</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-box"><i class="bi bi-hospital"></i></div>
+      <span class="name">AmRash</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">الرئيسية</div>
+      <a href="dashboard.html" class="nav-link"><i class="bi bi-grid-1x2-fill"></i> لوحة التحكم</a>
+      <a href="appointments.html" class="nav-link"><i class="bi bi-calendar-check"></i> المواعيد</a>
+      <div class="nav-section-title">الإدارة الطبية</div>
+      <a href="patients.html" class="nav-link"><i class="bi bi-people"></i> المرضى</a>
+      <a href="doctors.html" class="nav-link active"><i class="bi bi-person-badge"></i> الأطباء</a>
+      <a href="departments.html" class="nav-link"><i class="bi bi-diagram-3"></i> الأقسام</a>
+      <a href="services.html" class="nav-link"><i class="bi bi-clipboard2-pulse"></i> الخدمات الطبية</a>
+      <div class="nav-section-title">النظام</div>
+      <a href="reports.html" class="nav-link"><i class="bi bi-bar-chart-line"></i> التقارير</a>
+      <a href="settings.html" class="nav-link"><i class="bi bi-gear"></i> الإعدادات</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#" class="nav-link" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> تسجيل الخروج</a>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="main-area">
+    <header class="topbar">
+      <button class="btn-mobile-toggle" id="mobileToggle"><i class="bi bi-list"></i></button>
+      <h1 class="page-title">إدارة الأطباء</h1>
+      <div class="topbar-right">
+        <button class="icon-btn" data-bs-toggle="dropdown"><i class="bi bi-bell"></i><span class="badge-dot"></span></button>
+        <ul class="dropdown-menu dropdown-menu-end shadow">
+          <li><h6 class="dropdown-header">الإشعارات</h6></li>
+          <li><a class="dropdown-item" href="#">تم إضافة طبيب جديد</a></li>
+        </ul>
+        <div class="dropdown">
+          <div class="user-chip" data-bs-toggle="dropdown">
+            <div class="avatar">أ</div>
+            <div><div class="u-name">أحمد رشاد</div><div class="u-role">مدير النظام</div></div>
+          </div>
+          <ul class="dropdown-menu dropdown-menu-end shadow">
+            <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i> ملفي الشخصي</a></li>
+            <li><a class="dropdown-item" href="settings.html"><i class="bi bi-gear me-2"></i> الإعدادات</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#" id="logoutBtn2"><i class="bi bi-box-arrow-right me-2"></i> تسجيل الخروج</a></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <div class="page-head">
+        <div>
+          <h1>الأطباء</h1>
+          <p>إدارة بيانات الأطباء والتخصصات والأقسام المرتبطة بهم</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-soft" onclick="window.print()"><i class="bi bi-printer me-1"></i> طباعة</button>
+          <button class="btn btn-soft" id="exportCsvBtn"><i class="bi bi-file-earmark-excel me-1"></i> تصدير</button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#doctorModal" id="addDoctorBtn">
+            <i class="bi bi-person-plus me-1"></i> إضافة طبيب
+          </button>
+        </div>
+      </div>
+
+      <!-- إحصائيات سريعة -->
+      <div class="row g-3 mb-3">
+        <div class="col-xl-3 col-md-6">
+          <div class="stat-card">
+            <div class="stat-icon teal"><i class="bi bi-person-badge-fill"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" data-stat="doctorTotal">0</div>
+              <div class="stat-label">إجمالي الأطباء</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+          <div class="stat-card">
+            <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" data-stat="doctorActive">0</div>
+              <div class="stat-label">على رأس العمل</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+          <div class="stat-card">
+            <div class="stat-icon orange"><i class="bi bi-pause-circle-fill"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" data-stat="doctorLeave">0</div>
+              <div class="stat-label">في إجازة</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+          <div class="stat-card">
+            <div class="stat-icon purple"><i class="bi bi-diagram-3-fill"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" data-stat="doctorDepartments">0</div>
+              <div class="stat-label">أقسام مغطاة</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- الفلاتر -->
+      <div class="card-box mb-3">
+        <div class="card-body-p">
+          <div class="toolbar mb-0">
+            <div class="search-input-wrap">
+              <i class="bi bi-search"></i>
+              <input type="text" class="form-control" id="doctorSearch" placeholder="ابحث بالاسم أو التخصص أو البريد...">
+            </div>
+            <select class="form-select" id="filterDepartment" style="max-width:200px">
+              <option value="">كل الأقسام</option>
+            </select>
+            <select class="form-select" id="filterSpecialty" style="max-width:200px">
+              <option value="">كل التخصصات</option>
+            </select>
+            <select class="form-select" id="filterStatus" style="max-width:170px">
+              <option value="">كل الحالات</option>
+              <option value="active">على رأس العمل</option>
+              <option value="leave">في إجازة</option>
+              <option value="inactive">غير نشط</option>
+            </select>
+            <button class="btn btn-soft" id="resetFilters"><i class="bi bi-arrow-counterclockwise me-1"></i> إعادة</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- جدول الأطباء -->
+      <div class="card-box">
+        <div class="card-head">
+          <h3>قائمة الأطباء (<span id="doctorCount">0</span>)</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="table-box">
+            <thead>
+              <tr>
+                <th>كود الطبيب</th>
+                <th>الاسم</th>
+                <th>التخصص</th>
+                <th>القسم</th>
+                <th>الهاتف</th>
+                <th>البريد</th>
+                <th>مواعيد اليوم</th>
+                <th>الحالة</th>
+                <th style="width:140px">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="doctorsTableBody"></tbody>
+          </table>
+        </div>
+        <div class="card-body-p d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span id="paginationInfo" style="font-size:13.5px;color:var(--brand-gray)"></span>
+          <nav><ul class="pagination pagination-sm mb-0" id="pagination"></ul></nav>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- نافذة إضافة/تعديل طبيب -->
+<div class="modal fade" id="doctorModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="doctorModalTitle">إضافة طبيب جديد</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="doctorForm">
+        <div class="modal-body">
+          <input type="hidden" id="doctorId">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">الاسم الكامل *</label>
+              <input type="text" class="form-control" id="dName" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">التخصص *</label>
+              <input type="text" class="form-control" id="dSpecialty" list="specialtyList" required>
+              <datalist id="specialtyList"></datalist>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">القسم *</label>
+              <select class="form-select" id="dDepartment" required></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">الدرجة العلمية</label>
+              <select class="form-select" id="dDegree">
+                <option value="أخصائي">أخصائي</option>
+                <option value="استشاري">استشاري</option>
+                <option value="طبيب مقيم">طبيب مقيم</option>
+                <option value="نائب">نائب</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">رقم الهاتف *</label>
+              <input type="tel" class="form-control" id="dPhone" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">البريد الإلكتروني *</label>
+              <input type="email" class="form-control" id="dEmail" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">عدد سنوات الخبرة</label>
+              <input type="number" class="form-control" id="dExperience" min="0">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">سعر الكشف</label>
+              <input type="number" class="form-control" id="dFee" min="0">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">الحالة</label>
+              <select class="form-select" id="dStatus">
+                <option value="active">على رأس العمل</option>
+                <option value="leave">في إجازة</option>
+                <option value="inactive">غير نشط</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">أيام العمل</label>
+              <div class="d-flex flex-wrap gap-3">
+                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="السبت" id="dSat"><label class="form-check-label" for="dSat">السبت</label></div>
+                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الأحد" id="dSun"><label class="form-check-label" for="dSun">الأحد</label></div>
+                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الاثنين" id="dMon"><label class="form-check-label" for="dMon">الاثنين</label></div>
+                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الثلاثاء" id="dTue"><label class="form-check-label" for="dTue">الثلاثاء</label></div>
+                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الأربعاء" id="dWed"><label class="form-check-label" for="dWed">الأربعاء</label></div>
+                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الخميس" id="dThu"><label class="form-check-label" for="dThu">الخميس</label></div>
+                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الجمعة" id="dFri"><label class="form-check-label" for="dFri">الجمعة</label></div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">من الساعة</label>
+              <input type="time" class="form-control" id="dFrom">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">إلى الساعة</label>
+              <input type="time" class="form-control" id="dTo">
+            </div>
+            <div class="col-12">
+              <label class="form-label">نبذة / ملاحظات</label>
+              <textarea class="form-control" id="dBio" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة تفاصيل الطبيب -->
+<div class="modal fade" id="doctorViewModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">تفاصيل الطبيب</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="doctorViewBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إغلاق</button>
+        <button type="button" class="btn btn-primary" id="printDoctorBtn"><i class="bi bi-printer me-1"></i> طباعة</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- تأكيد الحذف -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i> تأكيد الحذف</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">هل أنت متأكد من حذف هذا الطبيب؟ لا يمكن التراجع عن هذا الإجراء.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">حذف نهائي</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="JS/app.js"></script>
+</body>
+</html>

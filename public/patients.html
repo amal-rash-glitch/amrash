@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AmRash | إدارة المرضى</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-layout">
+  <!-- الشريط الجانبي -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-box"><i class="bi bi-hospital"></i></div>
+      <span class="name">AmRash</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">الرئيسية</div>
+      <a href="dashboard.html" class="nav-link"><i class="bi bi-grid-1x2-fill"></i> لوحة التحكم</a>
+      <a href="appointments.html" class="nav-link"><i class="bi bi-calendar-check"></i> المواعيد</a>
+      <div class="nav-section-title">الإدارة الطبية</div>
+      <a href="patients.html" class="nav-link active"><i class="bi bi-people"></i> المرضى</a>
+      <a href="doctors.html" class="nav-link"><i class="bi bi-person-badge"></i> الأطباء</a>
+      <a href="departments.html" class="nav-link"><i class="bi bi-diagram-3"></i> الأقسام</a>
+      <a href="services.html" class="nav-link"><i class="bi bi-clipboard2-pulse"></i> الخدمات الطبية</a>
+      <div class="nav-section-title">النظام</div>
+      <a href="reports.html" class="nav-link"><i class="bi bi-bar-chart-line"></i> التقارير</a>
+      <a href="settings.html" class="nav-link"><i class="bi bi-gear"></i> الإعدادات</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#" class="nav-link" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> تسجيل الخروج</a>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="main-area">
+    <header class="topbar">
+      <button class="btn-mobile-toggle" id="mobileToggle"><i class="bi bi-list"></i></button>
+      <h1 class="page-title">إدارة المرضى</h1>
+      <div class="topbar-right">
+        <button class="icon-btn" data-bs-toggle="dropdown"><i class="bi bi-bell"></i><span class="badge-dot"></span></button>
+        <ul class="dropdown-menu dropdown-menu-end shadow">
+          <li><h6 class="dropdown-header">الإشعارات</h6></li>
+          <li><a class="dropdown-item" href="#">موعد جديد للمريض أحمد سامي</a></li>
+        </ul>
+        <div class="dropdown">
+          <div class="user-chip" data-bs-toggle="dropdown">
+            <div class="avatar">أ</div>
+            <div><div class="u-name">أحمد رشاد</div><div class="u-role">مدير النظام</div></div>
+          </div>
+          <ul class="dropdown-menu dropdown-menu-end shadow">
+            <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i> ملفي الشخصي</a></li>
+            <li><a class="dropdown-item" href="settings.html"><i class="bi bi-gear me-2"></i> الإعدادات</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#" id="logoutBtn2"><i class="bi bi-box-arrow-right me-2"></i> تسجيل الخروج</a></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <div class="page-head">
+        <div>
+          <h1>المرضى</h1>
+          <p>إدارة ملفات المرضى المسجلين في المركز</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-soft" onclick="window.print()"><i class="bi bi-printer me-1"></i> طباعة</button>
+          <button class="btn btn-soft" id="exportCsvBtn"><i class="bi bi-file-earmark-excel me-1"></i> تصدير</button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#patientModal" id="addPatientBtn">
+            <i class="bi bi-person-plus me-1"></i> إضافة مريض
+          </button>
+        </div>
+      </div>
+
+      <!-- شريط الفلاتر -->
+      <div class="card-box mb-3">
+        <div class="card-body-p">
+          <div class="toolbar mb-0">
+            <div class="search-input-wrap">
+              <i class="bi bi-search"></i>
+              <input type="text" class="form-control" id="patientSearch" placeholder="ابحث بالاسم أو رقم الملف أو الهاتف...">
+            </div>
+            <select class="form-select" id="filterDepartment" style="max-width:200px">
+              <option value="">كل الأقسام</option>
+            </select>
+            <select class="form-select" id="filterGender" style="max-width:160px">
+              <option value="">كل الفئات</option>
+              <option value="ذكر">ذكر</option>
+              <option value="أنثى">أنثى</option>
+            </select>
+            <select class="form-select" id="filterStatus" style="max-width:160px">
+              <option value="">كل الحالات</option>
+              <option value="active">نشط</option>
+              <option value="inactive">غير نشط</option>
+            </select>
+            <button class="btn btn-soft" id="resetFilters"><i class="bi bi-arrow-counterclockwise me-1"></i> إعادة</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- جدول المرضى -->
+      <div class="card-box">
+        <div class="card-head">
+          <h3>قائمة المرضى (<span id="patientCount">0</span>)</h3>
+          <div class="d-flex gap-2 align-items-center">
+            <span style="font-size:13px;color:var(--brand-gray)">عرض:</span>
+            <select class="form-select form-select-sm" id="perPageSelect" style="width:auto">
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table-box">
+            <thead>
+              <tr>
+                <th style="width:40px"><input type="checkbox" class="form-check-input" id="selectAll"></th>
+                <th>رقم الملف</th>
+                <th>الاسم</th>
+                <th>الهاتف</th>
+                <th>النوع</th>
+                <th>العمر</th>
+                <th>القسم</th>
+                <th>آخر زيارة</th>
+                <th>الحالة</th>
+                <th style="width:140px">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="patientsTableBody"></tbody>
+          </table>
+        </div>
+        <div class="card-body-p d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span id="paginationInfo" style="font-size:13.5px;color:var(--brand-gray)"></span>
+          <nav><ul class="pagination pagination-sm mb-0" id="pagination"></ul></nav>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ نافذة إضافة/تعديل مريض ============ -->
+<div class="modal fade" id="patientModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="patientModalTitle">إضافة مريض جديد</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="patientForm">
+        <div class="modal-body">
+          <input type="hidden" id="patientId">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">الاسم الكامل *</label>
+              <input type="text" class="form-control" id="pName" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">رقم الهاتف *</label>
+              <input type="tel" class="form-control" id="pPhone" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">البريد الإلكتروني</label>
+              <input type="email" class="form-control" id="pEmail">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">تاريخ الميلاد</label>
+              <input type="date" class="form-control" id="pDob">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">النوع</label>
+              <select class="form-select" id="pGender">
+                <option value="ذكر">ذكر</option>
+                <option value="أنثى">أنثى</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">القسم</label>
+              <select class="form-select" id="pDepartment"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">فصيلة الدم</label>
+              <select class="form-select" id="pBlood">
+                <option value="">غير محدد</option>
+                <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">العنوان</label>
+              <input type="text" class="form-control" id="pAddress">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">الأمراض المزمنة</label>
+              <input type="text" class="form-control" id="pChronic" placeholder="مثال: ضغط، سكري">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">الحساسية</label>
+              <input type="text" class="form-control" id="pAllergies">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">جهة الاتصال في الطوارئ</label>
+              <input type="text" class="form-control" id="pEmergency">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">الحالة</label>
+              <select class="form-select" id="pStatus">
+                <option value="active">نشط</option>
+                <option value="inactive">غير نشط</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">ملاحظات</label>
+              <textarea class="form-control" id="pNotes" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ============ نافذة تفاصيل المريض ============ -->
+<div class="modal fade" id="patientViewModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">تفاصيل المريض</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="patientViewBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إغلاق</button>
+        <button type="button" class="btn btn-primary" id="printPatientBtn"><i class="bi bi-printer me-1"></i> طباعة</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ نافذة تأكيد الحذف ============ -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i> تأكيد الحذف</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">هل أنت متأكد من حذف هذا المريض؟ لا يمكن التراجع عن هذا الإجراء.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">حذف نهائي</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="JS/app.js"></script>
+
+</body>
+</html>
