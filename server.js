@@ -2873,9 +2873,11 @@ async function startServer() {
   try {
     await testDatabase();
 
-    app.listen(PORT, () => {
-      console.log(`AmRash server running at: http://localhost:${PORT}/`);
-    });
+   const HOST = "0.0.0.0";
+
+   app.listen(PORT, HOST, () => {
+     console.log(`AmRash server running on port ${PORT}`);
+   });
   } catch (error) {
     console.error("Failed to start server:", error.message);
 
