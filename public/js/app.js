@@ -3,7 +3,6 @@
    AmRash — Unified Application JavaScript
    Arabic Medical Management System
    ========================================================= */
-
 /* =========================================================
 1. AUTHENTICATION
 ========================================================= */
@@ -13,79 +12,161 @@ const API_URL =
   (window.location.port === "5500"
     ? "http://localhost:3000/api"
     : "/api");
+
 const TOKEN_KEY = "amrash_token";
 const USER_KEY = "amrash_user";
 
+
 const Auth = {
+
   getToken() {
     return localStorage.getItem(TOKEN_KEY);
   },
 
+
   getUser() {
     try {
-      const value = localStorage.getItem(USER_KEY);
-      return value ? JSON.parse(value) : null;
+
+      const value =
+        localStorage.getItem(USER_KEY);
+
+      return value
+        ? JSON.parse(value)
+        : null;
+
     } catch (error) {
-      console.error("User parse error:", error);
+
+      console.error(
+        "User parse error:",
+        error
+      );
+
       return null;
     }
   },
 
+
   setSession(token, user) {
+
     if (token) {
-      localStorage.setItem(TOKEN_KEY, token);
+
+      localStorage.setItem(
+        TOKEN_KEY,
+        token
+      );
     }
 
     if (user) {
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+      localStorage.setItem(
+        USER_KEY,
+        JSON.stringify(user)
+      );
     }
   },
 
+
   clear() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem("amrash_remember");
+
+    localStorage.removeItem(
+      TOKEN_KEY
+    );
+
+    localStorage.removeItem(
+      USER_KEY
+    );
+
+    localStorage.removeItem(
+      "amrash_remember"
+    );
   },
 
+
   isLoggedIn() {
+
     return !!this.getToken();
   },
 
-  isLoginPage() {
-    const path = window.location.pathname.toLowerCase();
-    const file = path.split("/").pop();
 
-    return file === "login.html";
+  isLoginPage() {
+
+    const path =
+      window.location.pathname
+        .toLowerCase()
+        .replace(/\/+$/, "");
+
+    /*
+    ---------------------------------------------------------
+    صفحة تسجيل الدخول يمكن أن تكون:
+    /
+    /login.html
+    ---------------------------------------------------------
+    */
+
+    return (
+      path === "" ||
+      path === "/" ||
+      path === "/login.html" ||
+      path.endsWith("/login.html")
+    );
   },
 
+
   requireAuth() {
+
+    /*
+    ---------------------------------------------------------
+    إذا كنا في صفحة الدخول،
+    لا نمنع الصفحة.
+    ---------------------------------------------------------
+    */
+
     if (this.isLoginPage()) {
       return true;
     }
-    console.log("LOGIN PAGE INIT");
+
+
+    /*
+    ---------------------------------------------------------
+    أي صفحة أخرى تحتاج جلسة صحيحة.
+    ---------------------------------------------------------
+    */
 
     if (!this.isLoggedIn()) {
-      window.location.href = "login.html";
+
+      window.location.replace(
+        "login.html"
+      );
+
       return false;
     }
+
 
     return true;
   },
 
+
   logout() {
+
     this.clear();
 
     try {
+
       sessionStorage.clear();
+
     } catch (error) {
-      console.warn("Session storage clear failed:", error);
+
+      console.warn(
+        "Session storage clear failed:",
+        error
+      );
     }
 
-    window.location.replace("login.html");
+    window.location.replace(
+      "login.html"
+    );
   }
 };
-
-
 /* =========================================================
 2. API
 ========================================================= */
@@ -7980,17 +8061,39 @@ async function loadBackupList() {
 ========================================================= */
 
 async function initAmRash() {
-  initLoginPage();
+
+  /*
+  ---------------------------------------------------------
+  صفحة تسجيل الدخول
+  ---------------------------------------------------------
+  */
+
+  if (Auth.isLoginPage()) {
+
+    initLoginPage();
+
+    return;
+  }
+
+
+  /*
+  ---------------------------------------------------------
+  حماية باقي الصفحات
+  ---------------------------------------------------------
+  */
 
   if (!Auth.requireAuth()) {
     return;
   }
 
+
   Toast.init();
 
   initActiveSidebar();
   initSidebar();
+
   loadCurrentUser();
+
   initLogout();
   initProfileLinks();
   initCurrentDate();
@@ -8008,51 +8111,58 @@ async function initAmRash() {
   initPasswordForm();
   initSettingsSections();
 
+
   const page =
     getCurrentPage();
 
+
   if (
-    page ===
-    "dashboard.html"
+    page === "dashboard.html"
   ) {
+
     await loadDashboard();
   }
 
+
   if (
-    page ===
-    "departments.html"
+    page === "departments.html"
   ) {
+
     await loadDepartments();
   }
 
+
   if (
-    page ===
-    "doctors.html"
+    page === "doctors.html"
   ) {
+
     await loadDepartments();
     await loadDoctors();
   }
 
+
   if (
-    page ===
-    "patients.html"
+    page === "patients.html"
   ) {
+
     await loadDepartments();
     await loadPatients();
   }
 
+
   if (
-    page ===
-    "services.html"
+    page === "services.html"
   ) {
+
     await loadDepartments();
     await loadServices();
   }
 
+
   if (
-    page ===
-    "appointments.html"
+    page === "appointments.html"
   ) {
+
     await loadDepartments();
     await loadDoctors();
     await loadPatients();
@@ -8060,24 +8170,27 @@ async function initAmRash() {
     await loadAppointments();
   }
 
+
   if (
-    page ===
-    "profile.html"
+    page === "profile.html"
   ) {
+
     await loadProfile();
   }
 
+
   if (
-    page ===
-    "reports.html"
+    page === "reports.html"
   ) {
+
     await loadDepartments();
   }
 
+
   if (
-    page ===
-    "settings.html"
+    page === "settings.html"
   ) {
+
     await loadSettings();
   }
 }
