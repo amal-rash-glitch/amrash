@@ -2951,17 +2951,54 @@ app.use((error, req, res, next) => {
 // START SERVER
 // ==========================================================
 
+// ==========================================================
+// START SERVER
+// ==========================================================
+
 async function startServer() {
   try {
+    // اختبار اتصال قاعدة البيانات
     await testDatabase();
 
-   const HOST = "0.0.0.0";
+    // ========================================================
+    // التأكد من وجود عمود degree في جدول doctors
+    // ========================================================
 
-   app.listen(PORT, HOST, () => {
-     console.log(`AmRash server running on port ${PORT}`);
-   });
+    const [degreeColumn] = await pool.query(`
+      SHOW COLUMNS
+      FROM doctors
+      LIKE 'degree'
+    `);
+
+    if (degreeColumn.length === 0) {
+      console.log("Column 'degree' not found. Creating it...");
+
+      await pool.query(`
+        ALTER TABLE doctors
+        ADD COLUMN degree VARCHAR(100) NULL
+        AFTER specialty
+      `);
+
+      console.log("Column 'degree' created successfully.");
+    } else {
+      console.log("Column 'degree' already exists.");
+    }
+
+    // ========================================================
+    // تشغيل السيرفر
+    // ========================================================
+
+    const HOST = "0.0.0.0";
+
+    app.listen(PORT, HOST, () => {
+      console.log(`AmRash server running on port ${PORT}`);
+    });
+
   } catch (error) {
-    console.error("Failed to start server:", error.message);
+    console.error(
+      "Failed to start server:",
+      error.message
+    );
 
     process.exit(1);
   }
