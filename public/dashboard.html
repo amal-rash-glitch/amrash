@@ -51,14 +51,27 @@
         <button class="icon-btn" data-bs-toggle="dropdown">
           <i class="bi bi-bell"></i><span class="badge-dot"></span>
         </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow">
-          <li><h6 class="dropdown-header">الإشعارات</h6></li>
-          <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-plus text-primary me-2"></i> موعد جديد للمريض أحمد سامي</a></li>
-          <li><a class="dropdown-item" href="#"><i class="bi bi-person-plus text-success me-2"></i> تم إضافة طبيب جديد</a></li>
-          <li><a class="dropdown-item" href="#"><i class="bi bi-exclamation-circle text-warning me-2"></i> 3 مواعيد لم تُؤكد اليوم</a></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item text-center" href="#">عرض كل الإشعارات</a></li>
-        </ul>
+      <ul class="dropdown-menu dropdown-menu-end shadow" id="notificationsMenu">
+  <li>
+    <h6 class="dropdown-header">الإشعارات</h6>
+  </li>
+
+  <li id="notificationsEmpty">
+    <span class="dropdown-item-text text-muted text-center">
+      لا توجد إشعارات جديدة
+    </span>
+  </li>
+
+  <li>
+    <hr class="dropdown-divider">
+  </li>
+
+  <li>
+    <a class="dropdown-item text-center" href="#" id="viewAllNotifications">
+      عرض كل الإشعارات
+    </a>
+  </li>
+</ul>
 
         <div class="dropdown">
           <div class="user-chip" data-bs-toggle="dropdown">

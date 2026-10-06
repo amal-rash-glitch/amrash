@@ -2768,100 +2768,41 @@ async function loadPatients() {
 }
 
 function renderPatients() {
-  const table =
-    document.getElementById(
-      "patientsTableBody"
+  const table = document.getElementById("patientsTableBody");
+
+  const search = Helpers.normalize(Helpers.getValue("patientSearch"));
+
+  const department = Helpers.getValue("filterDepartment");
+
+  const gender = Helpers.normalize(Helpers.getValue("filterGender"));
+
+  const status = Helpers.normalize(Helpers.getValue("filterStatus"));
+
+  const filtered = patientsData.filter((patient) => {
+    const name = patient.name || patient.patient_name || "";
+
+    const phone = patient.phone || "";
+
+    const patientDepartment = String(
+      patient.department_id || patient.department?.id || "",
     );
 
-  const search =
-    Helpers.normalize(
-      Helpers.getValue(
-        "patientSearch"
-      )
+    const patientGender = Helpers.normalize(patient.gender);
+
+    const patientStatus = Helpers.normalize(patient.status);
+
+    return (
+      (!search ||
+        Helpers.normalize(name).includes(search) ||
+        Helpers.normalize(phone).includes(search) ||
+        Helpers.normalize(patient.file_number).includes(search)) &&
+      (!department || patientDepartment === String(department)) &&
+      (!gender || patientGender === gender) &&
+      (!status || patientStatus === status)
     );
+  });
 
-  const department =
-    Helpers.getValue(
-      "filterDepartment"
-    );
-
-  const gender =
-    Helpers.normalize(
-      Helpers.getValue(
-        "filterGender"
-      )
-    );
-
-  const status =
-    Helpers.normalize(
-      Helpers.getValue(
-        "filterStatus"
-      )
-    );
-
-  const filtered =
-    patientsData.filter(
-      (patient) => {
-        const name =
-          patient.name ||
-          patient.patient_name ||
-          "";
-
-        const phone =
-          patient.phone ||
-          "";
-
-        const patientDepartment =
-          String(
-            patient.department_id ||
-            patient.department?.id ||
-            ""
-          );
-
-        const patientGender =
-          Helpers.normalize(
-            patient.gender
-          );
-
-        const patientStatus =
-          Helpers.normalize(
-            patient.status
-          );
-
-        return (
-          (
-            !search ||
-            Helpers.normalize(name).includes(
-              search
-            ) ||
-            Helpers.normalize(phone).includes(
-              search
-            ) ||
-            Helpers.normalize(
-              patient.file_number
-            ).includes(search)
-          ) &&
-          (
-            !department ||
-            patientDepartment ===
-              String(department)
-          ) &&
-          (
-            !gender ||
-            patientGender === gender
-          ) &&
-          (
-            !status ||
-            patientStatus === status
-          )
-        );
-      }
-    );
-
-  Helpers.setText(
-    "patientCount",
-    filtered.length
-  );
+  Helpers.setText("patientCount", filtered.length);
 
   if (!table) {
     return;
@@ -2870,22 +2811,14 @@ function renderPatients() {
   table.innerHTML = filtered.length
     ? filtered
         .map((patient, index) => {
-          const name =
-            patient.name ||
-            patient.patient_name ||
-            "—";
+          const name = patient.name || patient.patient_name || "—";
 
           const departmentName =
-            patient.department_name ||
-            patient.department?.name ||
-            "—";
+            patient.department_name || patient.department?.name || "—";
 
           const age =
             patient.age ??
-            Helpers.calcAge(
-              patient.birth_date ||
-              patient.date_of_birth
-            );
+            Helpers.calcAge(patient.birth_date || patient.date_of_birth);
 
           return `
             <tr>
@@ -2893,19 +2826,16 @@ function renderPatients() {
                 <input
                   type="checkbox"
                   class="form-check-input patient-check"
-                  value="${Helpers.escapeHTML(
-                    patient.id
-                  )}"
+                  value="${Helpers.escapeHTML(patient.id)}"
                 >
               </td>
 
-              <td>${index + 1}</td>
+              <td>
+                ${index + 1}
+              </td>
 
               <td>
-                ${Helpers.escapeHTML(
-                  patient.file_number ||
-                  "—"
-                )}
+                ${Helpers.escapeHTML(patient.file_number || "—")}
               </td>
 
               <td>
@@ -2913,55 +2843,58 @@ function renderPatients() {
               </td>
 
               <td>
-                ${Helpers.escapeHTML(
-                  Helpers.statusText(
-                    patient.gender
-                  )
-                )}
-              </td>
-
-              <td>${age}</td>
-
-              <td>
-                ${Helpers.escapeHTML(
-                  patient.phone ||
-                  "—"
-                )}
+                ${Helpers.escapeHTML(Helpers.statusText(patient.gender))}
               </td>
 
               <td>
-                ${Helpers.escapeHTML(
-                  departmentName
-                )}
+                ${age}
               </td>
 
               <td>
-                ${Helpers.badge(
-                  patient.status
-                )}
+                ${Helpers.escapeHTML(patient.phone || "—")}
+              </td>
+
+              <td>
+                ${Helpers.escapeHTML(departmentName)}
+              </td>
+
+              <td>
+                ${Helpers.badge(patient.status)}
               </td>
 
               <td>
                 <div class="d-flex gap-1">
+
+                  <!-- عرض التفاصيل -->
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-primary"
+                    data-view-patient="${Helpers.escapeHTML(patient.id)}"
+                    title="عرض التفاصيل"
+                  >
+                    <i class="bi bi-eye"></i>
+                  </button>
+
+                  <!-- تعديل -->
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-secondary"
-                    data-edit-patient="${Helpers.escapeHTML(
-                      patient.id
-                    )}"
+                    data-edit-patient="${Helpers.escapeHTML(patient.id)}"
+                    title="تعديل"
                   >
                     <i class="bi bi-pencil"></i>
                   </button>
 
+                  <!-- حذف -->
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-danger"
-                    data-delete-patient="${Helpers.escapeHTML(
-                      patient.id
-                    )}"
+                    data-delete-patient="${Helpers.escapeHTML(patient.id)}"
+                    title="حذف"
                   >
                     <i class="bi bi-trash"></i>
                   </button>
+
                 </div>
               </td>
             </tr>
@@ -2970,7 +2903,10 @@ function renderPatients() {
         .join("")
     : `
       <tr>
-        <td colspan="12" class="text-center text-muted py-4">
+        <td
+          colspan="12"
+          class="text-center text-muted py-4"
+        >
           لا توجد بيانات للمرضى.
         </td>
       </tr>
@@ -3123,116 +3059,746 @@ function openPatientForm(
 }
 
 async function savePatient() {
-  const name =
-    Helpers.getValue(
-      "pName"
-    ).trim();
+  const name = Helpers.getValue("pName").trim();
 
   if (!name) {
-    Toast.error(
-      "اسم المريض مطلوب."
-    );
+    Toast.error("اسم المريض مطلوب.");
     return;
   }
 
   const body = {
     name,
     patient_name: name,
-    phone:
-      Helpers.getValue(
-        "pPhone"
-      ).trim(),
-    email:
-      Helpers.getValue(
-        "pEmail"
-      ).trim(),
-    birth_date:
-      Helpers.getValue(
-        "pDob"
-      ),
-    date_of_birth:
-      Helpers.getValue(
-        "pDob"
-      ),
-    gender:
-      Helpers.getValue(
-        "pGender"
-      ),
-    department_id:
-      Helpers.getValue(
-        "pDepartment"
-      ),
-    blood_type:
-      Helpers.getValue(
-        "pBlood"
-      ),
-    address:
-      Helpers.getValue(
-        "pAddress"
-      ).trim(),
-    chronic_conditions:
-      Helpers.getValue(
-        "pChronic"
-      ).trim(),
-    allergies:
-      Helpers.getValue(
-        "pAllergies"
-      ).trim(),
-    emergency_contact_phone:
-      Helpers.getValue(
-        "pEmergency"
-      ).trim(),
-    status:
-      Helpers.getValue(
-        "pStatus"
-      ) || "active",
-    notes:
-      Helpers.getValue(
-        "pNotes"
-      ).trim()
+
+    phone: Helpers.getValue("pPhone").trim(),
+
+    email: Helpers.getValue("pEmail").trim(),
+
+    birth_date: Helpers.getValue("pDob"),
+
+    date_of_birth: Helpers.getValue("pDob"),
+
+    gender: Helpers.getValue("pGender"),
+
+    department_id: Helpers.getValue("pDepartment"),
+
+    blood_type: Helpers.getValue("pBlood"),
+
+    address: Helpers.getValue("pAddress").trim(),
+
+    chronic_conditions: Helpers.getValue("pChronic").trim(),
+
+    allergies: Helpers.getValue("pAllergies").trim(),
+
+    emergency_contact_phone: Helpers.getValue("pEmergency").trim(),
+
+    status: Helpers.getValue("pStatus") || "active",
+
+    notes: Helpers.getValue("pNotes").trim(),
   };
 
   try {
+    /* =====================================================
+       تعديل مريض موجود
+    ===================================================== */
+
     if (editingPatientId) {
-      await API.put(
-        `/patients/${encodeURIComponent(
-          editingPatientId
-        )}`,
-        body
-      );
+      await API.put(`/patients/${encodeURIComponent(editingPatientId)}`, body);
 
-      Toast.success(
-        "تم تحديث بيانات المريض بنجاح."
-      );
-    } else {
-      await API.post(
-        "/patients",
-        body
-      );
+      Toast.success("تم تحديث بيانات المريض بنجاح.");
 
-      Toast.success(
-        "تمت إضافة المريض بنجاح."
-      );
+      hideModal("patientModal");
+
+      editingPatientId = null;
+
+      await loadPatients();
+
+      return;
     }
+
+    /* =====================================================
+       تسجيل مريض جديد
+    ===================================================== */
+
+    const result = await API.post("/patients", body);
+
+    /* =====================================================
+       استخراج بيانات المريض الجديد
+    ===================================================== */
+
+    const patientId =
+      result?.id ||
+      result?.patient?.id ||
+      result?.data?.id ||
+      result?.data?.patient?.id ||
+      null;
+
+    const fileNumber =
+      result?.file_number ||
+      result?.patient?.file_number ||
+      result?.data?.file_number ||
+      null;
+
+    /* =====================================================
+       حفظ بيانات آخر مريض تم تسجيله
+       لاستخدامها في إيصال التسجيل
+    ===================================================== */
+
+    window.lastRegisteredPatient = {
+      id: patientId,
+      file_number: fileNumber,
+
+      name: name,
+
+      phone: body.phone || "",
+
+      email: body.email || "",
+
+      birth_date: body.birth_date || "",
+
+      gender: body.gender || "",
+
+      department_id: body.department_id || "",
+
+      blood_type: body.blood_type || "",
+
+      address: body.address || "",
+
+      status: body.status || "active",
+
+      registered_at: new Date().toISOString(),
+
+      registered_by:
+        Auth.getUser()?.name || Auth.getUser()?.username || "موظف النظام",
+    };
+
+    /* =====================================================
+       رسالة النجاح
+    ===================================================== */
+
+    Toast.success("تمت إضافة المريض بنجاح.");
+
+    /* =====================================================
+       إغلاق النافذة وإعادة تحميل المرضى
+    ===================================================== */
 
     hideModal("patientModal");
 
     editingPatientId = null;
 
     await loadPatients();
-  } catch (error) {
-    console.error(
-      "Save patient error:",
-      error
-    );
 
-    Toast.error(
-      error.message ||
-      "تعذر حفظ بيانات المريض."
-    );
+    /* =====================================================
+       عرض خيار استخراج الإيصال
+    ===================================================== */
+
+    setTimeout(() => {
+      const shouldPrint = window.confirm(
+        "تم تسجيل المريض بنجاح.\n\nهل تريد استخراج إيصال تسجيل المريض الآن؟",
+      );
+
+      if (shouldPrint) {
+        printPatientReceipt(window.lastRegisteredPatient);
+      }
+    }, 300);
+  } catch (error) {
+    console.error("Save patient error:", error);
+
+    Toast.error(error.message || "تعذر حفظ بيانات المريض.");
   }
 }
 
+/* =========================================================
+   PATIENT REGISTRATION RECEIPT
+========================================================= */
+
+function printPatientReceipt(patient) {
+  if (!patient) {
+    Toast.error("لا توجد بيانات للمريض لاستخراج الإيصال.");
+    return;
+  }
+
+  const user =
+    Auth.getUser?.() || {};
+
+  const departmentSelect =
+    document.getElementById("pDepartment");
+
+  let departmentName = "—";
+
+  if (departmentSelect && patient.department_id) {
+    const selectedOption =
+      departmentSelect.querySelector(
+        `option[value="${CSS.escape(String(patient.department_id))}"]`
+      );
+
+    if (selectedOption) {
+      departmentName =
+        selectedOption.textContent.trim();
+    }
+  }
+
+  if (
+    departmentName === "—" &&
+    Array.isArray(window.departmentsData)
+  ) {
+    const department =
+      window.departmentsData.find(
+        (item) =>
+          String(item.id) ===
+          String(patient.department_id)
+      );
+
+    if (department) {
+      departmentName =
+        department.name ||
+        department.department_name ||
+        "—";
+    }
+  }
+
+  const receiptNumber =
+    `REC-${String(
+      patient.id || Date.now()
+    ).padStart(6, "0")}`;
+
+  const registrationDate =
+    new Date(
+      patient.registered_at ||
+      Date.now()
+    );
+
+  const formattedDate =
+    registrationDate.toLocaleDateString(
+      "ar-EG",
+      {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }
+    );
+
+  const formattedTime =
+    registrationDate.toLocaleTimeString(
+      "ar-EG",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
+
+  const safe = (value) =>
+    Helpers.escapeHTML(
+      value === null ||
+      value === undefined ||
+      value === ""
+        ? "—"
+        : String(value)
+    );
+
+  const printWindow =
+    window.open(
+      "",
+      "_blank",
+      "width=900,height=800"
+    );
+
+  if (!printWindow) {
+    Toast.error(
+      "تعذر فتح نافذة الإيصال. يرجى السماح بالنوافذ المنبثقة."
+    );
+    return;
+  }
+
+  printWindow.document.open();
+
+  printWindow.document.write(`
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <title>إيصال تسجيل مريض - ${safe(
+    patient.name
+  )}</title>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 30px;
+      background: #f4f7fb;
+      font-family:
+        "Tahoma",
+        "Arial",
+        sans-serif;
+      color: #26364a;
+      direction: rtl;
+    }
+
+    .receipt {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #dce5ef;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .receipt-header {
+      padding: 28px 32px;
+      border-bottom: 1px solid #e3eaf2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      font-weight: 800;
+      color: #1769aa;
+    }
+
+    .brand p {
+      margin: 0;
+      color: #718096;
+      font-size: 14px;
+    }
+
+    .receipt-title {
+      text-align: left;
+    }
+
+    .receipt-title h2 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      color: #26364a;
+    }
+
+    .receipt-title span {
+      font-size: 13px;
+      color: #718096;
+    }
+
+    .receipt-number {
+      margin: 24px 32px 0;
+      padding: 14px 18px;
+      border-radius: 10px;
+      background: #f3f8fc;
+      border: 1px solid #dceaf4;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .receipt-number strong {
+      color: #1769aa;
+    }
+
+    .section {
+      padding: 26px 32px;
+    }
+
+    .section-title {
+      margin: 0 0 18px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e7edf3;
+      font-size: 17px;
+      font-weight: 700;
+      color: #26364a;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .field {
+      padding: 14px 16px;
+      border: 1px solid #e6edf4;
+      border-radius: 10px;
+      background: #fbfcfe;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: #7a8797;
+    }
+
+    .value {
+      font-size: 15px;
+      font-weight: 600;
+      color: #26364a;
+    }
+
+    .footer {
+      padding: 22px 32px;
+      border-top: 1px solid #e3eaf2;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      color: #7a8797;
+      font-size: 12px;
+    }
+
+    .signature {
+      text-align: center;
+      min-width: 160px;
+    }
+
+    .signature-line {
+      margin-top: 35px;
+      border-top: 1px solid #9aa7b5;
+      padding-top: 8px;
+    }
+
+    .print-actions {
+      max-width: 820px;
+      margin: 18px auto 0;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .print-actions button {
+      border: 0;
+      border-radius: 9px;
+      padding: 11px 22px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .print-btn {
+      background: #1769aa;
+      color: white;
+    }
+
+    .close-btn {
+      background: #e9eef4;
+      color: #26364a;
+    }
+
+    @media print {
+
+      @page {
+        size: A4;
+        margin: 12mm;
+      }
+
+      body {
+        padding: 0;
+        background: white;
+      }
+
+      .receipt {
+        max-width: none;
+        border: 0;
+        border-radius: 0;
+      }
+
+      .print-actions {
+        display: none;
+      }
+
+    }
+
+    @media (max-width: 600px) {
+
+      body {
+        padding: 12px;
+      }
+
+      .receipt-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .receipt-title {
+        text-align: right;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .receipt-number,
+      .section,
+      .receipt-header,
+      .footer {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <div class="receipt">
+
+    <div class="receipt-header">
+
+      <div class="brand">
+        <h1>AmRash</h1>
+        <p>نظام الإدارة الطبية</p>
+      </div>
+
+      <div class="receipt-title">
+        <h2>إيصال تسجيل مريض</h2>
+        <span>إيصال إثبات تسجيل المريض في النظام</span>
+      </div>
+
+    </div>
+
+
+    <div class="receipt-number">
+
+      <span>
+        رقم الإيصال
+      </span>
+
+      <strong>
+        ${safe(receiptNumber)}
+      </strong>
+
+    </div>
+
+
+    <div class="section">
+
+      <h3 class="section-title">
+        بيانات المريض
+      </h3>
+
+      <div class="grid">
+
+        <div class="field">
+          <span class="label">
+            رقم الملف
+          </span>
+          <span class="value">
+            ${safe(patient.file_number)}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            اسم المريض
+          </span>
+          <span class="value">
+            ${safe(patient.name)}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            رقم الهاتف
+          </span>
+          <span class="value">
+            ${safe(patient.phone)}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            البريد الإلكتروني
+          </span>
+          <span class="value">
+            ${safe(patient.email)}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            النوع
+          </span>
+          <span class="value">
+            ${safe(patient.gender)}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            تاريخ الميلاد
+          </span>
+          <span class="value">
+            ${safe(patient.birth_date)}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            فصيلة الدم
+          </span>
+          <span class="value">
+            ${safe(patient.blood_type)}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            القسم
+          </span>
+          <span class="value">
+            ${safe(departmentName)}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            العنوان
+          </span>
+          <span class="value">
+            ${safe(patient.address)}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            حالة المريض
+          </span>
+          <span class="value">
+            ${
+              patient.status === "active"
+                ? "نشط"
+                : patient.status === "inactive"
+                  ? "غير نشط"
+                  : safe(patient.status)
+            }
+          </span>
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="section">
+
+      <h3 class="section-title">
+        بيانات التسجيل
+      </h3>
+
+      <div class="grid">
+
+        <div class="field">
+          <span class="label">
+            تاريخ التسجيل
+          </span>
+          <span class="value">
+            ${safe(formattedDate)}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            وقت التسجيل
+          </span>
+          <span class="value">
+            ${safe(formattedTime)}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            تم التسجيل بواسطة
+          </span>
+          <span class="value">
+            ${safe(
+              patient.registered_by ||
+              user.name ||
+              user.username ||
+              "موظف النظام"
+            )}
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">
+            نوع الإيصال
+          </span>
+          <span class="value">
+            تسجيل مريض
+          </span>
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="footer">
+
+      <div>
+        تم إصدار هذا الإيصال من نظام AmRash
+      </div>
+
+      <div class="signature">
+
+        <div>
+          التوقيع
+        </div>
+
+        <div class="signature-line">
+          الموظف المسؤول
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div class="print-actions">
+
+    <button
+      type="button"
+      class="print-btn"
+      onclick="window.print()"
+    >
+      طباعة / حفظ PDF
+    </button>
+
+    <button
+      type="button"
+      class="close-btn"
+      onclick="window.close()"
+    >
+      إغلاق
+    </button>
+
+  </div>
+
+</body>
+
+</html>
+  `);
+
+  printWindow.document.close();
+
+  printWindow.focus();
+
+  setTimeout(() => {
+    printWindow.print();
+  }, 500);
+}
 
 /* =========================================================
 17. SERVICES
@@ -3468,9 +4034,7 @@ function renderServices() {
               </td>
 
               <td>
-                ${Helpers.escapeHTML(
-                  departmentName
-                )}
+                ${Helpers.escapeHTML(departmentName)}
               </td>
 
               <td>
@@ -3478,25 +4042,27 @@ function renderServices() {
               </td>
 
               <td>
-                ${Helpers.escapeHTML(
-                  duration
-                )}
+                ${Helpers.escapeHTML(duration)}
               </td>
 
               <td>
-                ${Helpers.badge(
-                  service.status
-                )}
+                ${Helpers.badge(service.status)}
               </td>
 
               <td>
                 <div class="d-flex gap-1">
+                <button
+  type="button"
+  class="btn btn-sm btn-outline-primary"
+  data-view-patient="${Helpers.escapeHTML(patient.id)}"
+  title="عرض التفاصيل"
+>
+  <i class="bi bi-eye"></i>
+</button>
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-secondary"
-                    data-edit-service="${Helpers.escapeHTML(
-                      service.id
-                    )}"
+                    data-edit-service="${Helpers.escapeHTML(service.id)}"
                   >
                     <i class="bi bi-pencil"></i>
                   </button>
@@ -3504,9 +4070,7 @@ function renderServices() {
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-danger"
-                    data-delete-service="${Helpers.escapeHTML(
-                      service.id
-                    )}"
+                    data-delete-service="${Helpers.escapeHTML(service.id)}"
                   >
                     <i class="bi bi-trash"></i>
                   </button>
@@ -5634,15 +6198,13 @@ function initPageEvents() {
   document.addEventListener(
     "click",
     async (event) => {
-
       /* -----------------------------------------------------
          PROFILE
       ----------------------------------------------------- */
 
-      const profileOpen =
-        event.target.closest(
-          "[data-open-profile],#openProfile"
-        );
+      const profileOpen = event.target.closest(
+        "[data-open-profile],#openProfile",
+      );
 
       if (profileOpen) {
         event.preventDefault();
@@ -5650,358 +6212,469 @@ function initPageEvents() {
         return;
       }
 
-
       /* -----------------------------------------------------
          DEPARTMENT EDIT
       ----------------------------------------------------- */
 
-      const departmentEdit =
-        event.target.closest(
-          "[data-edit-department]"
-        );
+      const departmentEdit = event.target.closest("[data-edit-department]");
 
       if (departmentEdit) {
-        const id =
-          departmentEdit.dataset
-            .editDepartment;
+        const id = departmentEdit.dataset.editDepartment;
 
-        const department =
-          departmentsData.find(
-            (item) =>
-              String(item.id) ===
-              String(id)
-          );
+        const department = departmentsData.find(
+          (item) => String(item.id) === String(id),
+        );
 
         if (department) {
-          openDepartmentForm(
-            department
-          );
+          openDepartmentForm(department);
         }
 
         return;
       }
 
-
       /* -----------------------------------------------------
-         DEPARTMENT DELETE
-      ----------------------------------------------------- */
+   PATIENT EDIT
+----------------------------------------------------- */
 
-      const departmentDelete =
-        event.target.closest(
-          "[data-delete-department]"
+const patientEdit =
+  event.target.closest("[data-edit-patient]");
+
+if (patientEdit) {
+  const patient = patientsData.find(
+    (item) =>
+      String(item.id) ===
+      String(patientEdit.dataset.editPatient),
+  );
+
+  if (patient) {
+    openPatientForm(patient);
+  }
+
+  return;
+}
+
+/* -----------------------------------------------------
+   PATIENT VIEW
+----------------------------------------------------- */
+
+const patientView =
+  event.target.closest("[data-view-patient]");
+
+if (patientView) {
+  const patient = patientsData.find(
+    (item) =>
+      String(item.id) ===
+      String(patientView.dataset.viewPatient),
+  );
+
+  if (patient) {
+    const body =
+      document.getElementById("patientViewBody");
+
+    if (body) {
+      const name =
+        patient.name ||
+        patient.patient_name ||
+        "—";
+
+      const departmentName =
+        patient.department_name ||
+        patient.department?.name ||
+        "—";
+
+      const age =
+        patient.age ??
+        Helpers.calcAge(
+          patient.birth_date ||
+          patient.date_of_birth
         );
 
-      if (departmentDelete) {
-        await deleteEntity(
-          "/departments",
-          departmentDelete.dataset
-            .deleteDepartment,
-          loadDepartments
-        );
+      body.innerHTML = `
+        <div class="row g-3">
 
-        return;
-      }
+          <div class="col-md-6">
+            <strong>رقم الملف</strong>
+            <div>
+              ${Helpers.escapeHTML(
+                patient.file_number || "—"
+              )}
+            </div>
+          </div>
 
+          <div class="col-md-6">
+            <strong>اسم المريض</strong>
+            <div>
+              ${Helpers.escapeHTML(name)}
+            </div>
+          </div>
 
-      /* -----------------------------------------------------
-         DEPARTMENT VIEW
-      ----------------------------------------------------- */
+          <div class="col-md-6">
+            <strong>رقم الهاتف</strong>
+            <div>
+              ${Helpers.escapeHTML(
+                patient.phone || "—"
+              )}
+            </div>
+          </div>
 
-      const departmentView =
-        event.target.closest(
-          "[data-view-department]"
-        );
+          <div class="col-md-6">
+            <strong>البريد الإلكتروني</strong>
+            <div>
+              ${Helpers.escapeHTML(
+                patient.email || "—"
+              )}
+            </div>
+          </div>
 
-      if (departmentView) {
-        const department =
-          departmentsData.find(
-            (item) =>
-              String(item.id) ===
-              String(
-                departmentView.dataset
-                  .viewDepartment
-              )
-          );
+          <div class="col-md-4">
+            <strong>النوع</strong>
+            <div>
+              ${Helpers.escapeHTML(
+                patient.gender || "—"
+              )}
+            </div>
+          </div>
 
-        if (department) {
-          const body =
-            document.getElementById(
-              "departmentViewBody"
-            );
+          <div class="col-md-4">
+            <strong>العمر</strong>
+            <div>
+              ${Helpers.escapeHTML(
+                age ?? "—"
+              )}
+            </div>
+          </div>
 
-          if (body) {
-            body.innerHTML = `
-              <div class="mb-3">
-                <strong>اسم القسم:</strong>
-                <div>
-                  ${Helpers.escapeHTML(
-                    department.name ||
-                    department.department_name ||
-                    "—"
-                  )}
-                </div>
-              </div>
+          <div class="col-md-4">
+            <strong>فصيلة الدم</strong>
+            <div>
+              ${Helpers.escapeHTML(
+                patient.blood_type || "—"
+              )}
+            </div>
+          </div>
 
-              <div class="mb-3">
-                <strong>الحالة:</strong>
-                <div class="mt-1">
-                  ${Helpers.badge(
-                    department.status
-                  )}
-                </div>
-              </div>
+          <div class="col-md-6">
+            <strong>القسم</strong>
+            <div>
+              ${Helpers.escapeHTML(
+                departmentName
+              )}
+            </div>
+          </div>
 
-              <div>
-                <strong>الوصف:</strong>
+          <div class="col-md-6">
+            <strong>الحالة</strong>
+            <div class="mt-1">
+              ${Helpers.badge(
+                patient.status
+              )}
+            </div>
+          </div>
 
-                <p class="text-muted mt-2">
-                  ${Helpers.escapeHTML(
-                    department.description ||
-                    "لا يوجد وصف"
-                  )}
-                </p>
-              </div>
-            `;
-          }
+          <div class="col-12">
+            <strong>العنوان</strong>
+            <div>
+              ${Helpers.escapeHTML(
+                patient.address || "—"
+              )}
+            </div>
+          </div>
 
-          showModal(
-            "departmentViewModal"
-          );
-        }
+          <div class="col-12">
+            <strong>الأمراض المزمنة</strong>
+            <div>
+              ${Helpers.escapeHTML(
+                patient.chronic_conditions || "—"
+              )}
+            </div>
+          </div>
 
-        return;
-      }
+          <div class="col-12">
+            <strong>الحساسية</strong>
+            <div>
+              ${Helpers.escapeHTML(
+                patient.allergies || "—"
+              )}
+            </div>
+          </div>
 
+          <div class="col-12">
+            <strong>ملاحظات</strong>
+            <div class="text-muted">
+              ${Helpers.escapeHTML(
+                patient.notes ||
+                "لا توجد ملاحظات"
+              )}
+            </div>
+          </div>
+
+        </div>
+      `;
+    }
+
+    window.currentPatientForPrint = patient;
+
+    showModal("patientViewModal");
+  }
+
+  return;
+}
+
+/* -----------------------------------------------------
+   PATIENT PRINT
+----------------------------------------------------- */
+
+const patientPrint =
+  event.target.closest("#printPatientBtn");
+
+if (patientPrint) {
+
+  if (window.currentPatientForPrint) {
+
+    printPatientReceipt(
+      window.currentPatientForPrint
+    );
+
+  } else {
+
+    Toast.error(
+      "لا توجد بيانات للمريض للطباعة."
+    );
+
+  }
+
+  return;
+}
+
+/* -----------------------------------------------------
+   PATIENT DELETE
+----------------------------------------------------- */
+
+const patientDelete =
+  event.target.closest("[data-delete-patient]");
+
+if (patientDelete) {
+
+  await deleteEntity(
+    "/patients",
+    patientDelete.dataset.deletePatient,
+    loadPatients,
+  );
+
+  return;
+}
+
+/* -----------------------------------------------------
+   DEPARTMENT DELETE
+----------------------------------------------------- */
+
+const departmentDelete =
+  event.target.closest(
+    "[data-delete-department]"
+  );
+
+if (departmentDelete) {
+
+  await deleteEntity(
+    "/departments",
+    departmentDelete.dataset.deleteDepartment,
+    loadDepartments,
+  );
+
+  return;
+}
+
+/* -----------------------------------------------------
+   DEPARTMENT VIEW
+----------------------------------------------------- */
+
+const departmentView =
+  event.target.closest(
+    "[data-view-department]"
+  );
+
+if (departmentView) {
+
+  const department =
+    departmentsData.find(
+      (item) =>
+        String(item.id) ===
+        String(
+          departmentView.dataset
+            .viewDepartment
+        ),
+    );
+
+  if (department) {
+
+    const body =
+      document.getElementById(
+        "departmentViewBody"
+      );
+
+    if (body) {
+
+      body.innerHTML = `
+        <div class="mb-3">
+          <strong>اسم القسم:</strong>
+
+          <div>
+            ${Helpers.escapeHTML(
+              department.name ||
+              department.department_name ||
+              "—",
+            )}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <strong>الحالة:</strong>
+
+          <div class="mt-1">
+            ${Helpers.badge(
+              department.status
+            )}
+          </div>
+        </div>
+
+        <div>
+          <strong>الوصف:</strong>
+
+          <p class="text-muted mt-2">
+            ${Helpers.escapeHTML(
+              department.description ||
+              "لا يوجد وصف",
+            )}
+          </p>
+        </div>
+      `;
+    }
+
+    showModal("departmentViewModal");
+  }
+
+  return;
+}
 
       /* -----------------------------------------------------
          DOCTOR EDIT
       ----------------------------------------------------- */
 
-      const doctorEdit =
-        event.target.closest(
-          "[data-edit-doctor]"
-        );
+      const doctorEdit = event.target.closest("[data-edit-doctor]");
 
       if (doctorEdit) {
-        const doctor =
-          doctorsData.find(
-            (item) =>
-              String(item.id) ===
-              String(
-                doctorEdit.dataset
-                  .editDoctor
-              )
-          );
+        const doctor = doctorsData.find(
+          (item) => String(item.id) === String(doctorEdit.dataset.editDoctor),
+        );
 
         if (doctor) {
-          openDoctorForm(
-            doctor
-          );
+          openDoctorForm(doctor);
         }
 
         return;
       }
-
 
       /* -----------------------------------------------------
          DOCTOR DELETE
       ----------------------------------------------------- */
 
-      const doctorDelete =
-        event.target.closest(
-          "[data-delete-doctor]"
-        );
+      const doctorDelete = event.target.closest("[data-delete-doctor]");
 
       if (doctorDelete) {
         await deleteEntity(
           "/doctors",
-          doctorDelete.dataset
-            .deleteDoctor,
-          loadDoctors
+          doctorDelete.dataset.deleteDoctor,
+          loadDoctors,
         );
 
         return;
       }
-
-
-      /* -----------------------------------------------------
-         PATIENT EDIT
-      ----------------------------------------------------- */
-
-      const patientEdit =
-        event.target.closest(
-          "[data-edit-patient]"
-        );
-
-      if (patientEdit) {
-        const patient =
-          patientsData.find(
-            (item) =>
-              String(item.id) ===
-              String(
-                patientEdit.dataset
-                  .editPatient
-              )
-          );
-
-        if (patient) {
-          openPatientForm(
-            patient
-          );
-        }
-
-        return;
-      }
-
-
-      /* -----------------------------------------------------
-         PATIENT DELETE
-      ----------------------------------------------------- */
-
-      const patientDelete =
-        event.target.closest(
-          "[data-delete-patient]"
-        );
-
-      if (patientDelete) {
-        await deleteEntity(
-          "/patients",
-          patientDelete.dataset
-            .deletePatient,
-          loadPatients
-        );
-
-        return;
-      }
-
 
       /* -----------------------------------------------------
          SERVICE EDIT
       ----------------------------------------------------- */
 
-      const serviceEdit =
-        event.target.closest(
-          "[data-edit-service]"
-        );
+      const serviceEdit = event.target.closest("[data-edit-service]");
 
       if (serviceEdit) {
-        const service =
-          servicesData.find(
-            (item) =>
-              String(item.id) ===
-              String(
-                serviceEdit.dataset
-                  .editService
-              )
-          );
+        const service = servicesData.find(
+          (item) => String(item.id) === String(serviceEdit.dataset.editService),
+        );
 
         if (service) {
-          openServiceForm(
-            service
-          );
+          openServiceForm(service);
         }
 
         return;
       }
-
 
       /* -----------------------------------------------------
          SERVICE DELETE
       ----------------------------------------------------- */
 
-      const serviceDelete =
-        event.target.closest(
-          "[data-delete-service]"
-        );
+      const serviceDelete = event.target.closest("[data-delete-service]");
 
       if (serviceDelete) {
         await deleteEntity(
           "/services",
-          serviceDelete.dataset
-            .deleteService,
-          loadServices
+          serviceDelete.dataset.deleteService,
+          loadServices,
         );
 
         return;
       }
-
 
       /* -----------------------------------------------------
          APPOINTMENT EDIT
       ----------------------------------------------------- */
 
-      const appointmentEdit =
-        event.target.closest(
-          "[data-edit-appointment]"
-        );
+      const appointmentEdit = event.target.closest("[data-edit-appointment]");
 
       if (appointmentEdit) {
-        const appointment =
-          appointmentsData.find(
-            (item) =>
-              String(item.id) ===
-              String(
-                appointmentEdit.dataset
-                  .editAppointment
-              )
-          );
+        const appointment = appointmentsData.find(
+          (item) =>
+            String(item.id) === String(appointmentEdit.dataset.editAppointment),
+        );
 
         if (appointment) {
-          openAppointmentForm(
-            appointment
-          );
+          openAppointmentForm(appointment);
         }
 
         return;
       }
 
-
       /* -----------------------------------------------------
          APPOINTMENT DELETE
       ----------------------------------------------------- */
 
-      const appointmentDelete =
-        event.target.closest(
-          "[data-delete-appointment]"
-        );
+      const appointmentDelete = event.target.closest(
+        "[data-delete-appointment]",
+      );
 
       if (appointmentDelete) {
         await deleteEntity(
           "/appointments",
-          appointmentDelete.dataset
-            .deleteAppointment,
-          loadAppointments
+          appointmentDelete.dataset.deleteAppointment,
+          loadAppointments,
         );
 
         return;
       }
 
-
       /* -----------------------------------------------------
          APPOINTMENT VIEW
       ----------------------------------------------------- */
 
-      const appointmentView =
-        event.target.closest(
-          "[data-view-appointment]"
-        );
+      const appointmentView = event.target.closest("[data-view-appointment]");
 
       if (appointmentView) {
-        const appointment =
-          appointmentsData.find(
-            (item) =>
-              String(item.id) ===
-              String(
-                appointmentView.dataset
-                  .viewAppointment
-              )
-          );
+        const appointment = appointmentsData.find(
+          (item) =>
+            String(item.id) === String(appointmentView.dataset.viewAppointment),
+        );
 
         if (appointment) {
-          const body =
-            document.getElementById(
-              "appointmentViewBody"
-            );
+          const body = document.getElementById("appointmentViewBody");
 
           if (body) {
             body.innerHTML = `
@@ -6012,8 +6685,8 @@ function initPageEvents() {
                   <div>
                     ${Helpers.escapeHTML(
                       appointment.patient_name ||
-                      appointment.patient?.name ||
-                      "—"
+                        appointment.patient?.name ||
+                        "—"
                     )}
                   </div>
                 </div>
@@ -6023,8 +6696,8 @@ function initPageEvents() {
                   <div>
                     ${Helpers.escapeHTML(
                       appointment.doctor_name ||
-                      appointment.doctor?.name ||
-                      "—"
+                        appointment.doctor?.name ||
+                        "—",
                     )}
                   </div>
                 </div>
@@ -6034,8 +6707,8 @@ function initPageEvents() {
                   <div>
                     ${Helpers.escapeHTML(
                       appointment.department_name ||
-                      appointment.department?.name ||
-                      "—"
+                        appointment.department?.name ||
+                        "—",
                     )}
                   </div>
                 </div>
@@ -6044,8 +6717,7 @@ function initPageEvents() {
                   <strong>التاريخ</strong>
                   <div>
                     ${Helpers.formatDate(
-                      appointment.appointment_date ||
-                      appointment.date
+                      appointment.appointment_date || appointment.date,
                     )}
                   </div>
                 </div>
@@ -6054,8 +6726,7 @@ function initPageEvents() {
                   <strong>الوقت</strong>
                   <div>
                     ${Helpers.formatTime(
-                      appointment.appointment_time ||
-                      appointment.time
+                      appointment.appointment_time || appointment.time,
                     )}
                   </div>
                 </div>
@@ -6063,9 +6734,7 @@ function initPageEvents() {
                 <div class="col-md-6">
                   <strong>الحالة</strong>
                   <div class="mt-1">
-                    ${Helpers.badge(
-                      appointment.status
-                    )}
+                    ${Helpers.badge(appointment.status)}
                   </div>
                 </div>
 
@@ -6074,8 +6743,7 @@ function initPageEvents() {
 
                   <p class="text-muted mt-2">
                     ${Helpers.escapeHTML(
-                      appointment.notes ||
-                      "لا توجد ملاحظات"
+                      appointment.notes || "لا توجد ملاحظات",
                     )}
                   </p>
                 </div>
@@ -6084,162 +6752,105 @@ function initPageEvents() {
             `;
           }
 
-          showModal(
-            "appointmentViewModal"
-          );
+          showModal("appointmentViewModal");
         }
 
         return;
       }
-
 
       /* -----------------------------------------------------
          ADD BUTTONS
       ----------------------------------------------------- */
 
-      const addButton =
-        event.target.closest(
-          "[data-add-department]," +
+      const addButton = event.target.closest(
+        "[data-add-department]," +
           "[data-add-doctor]," +
           "[data-add-patient]," +
           "[data-add-service]," +
-          "[data-add-appointment]"
-        );
+          "[data-add-appointment]",
+      );
 
       if (addButton) {
         event.preventDefault();
 
-        if (
-          addButton.hasAttribute(
-            "data-add-department"
-          )
-        ) {
+        if (addButton.hasAttribute("data-add-department")) {
           openDepartmentForm();
           return;
         }
 
-        if (
-          addButton.hasAttribute(
-            "data-add-doctor"
-          )
-        ) {
+        if (addButton.hasAttribute("data-add-doctor")) {
           openDoctorForm();
           return;
         }
 
-        if (
-          addButton.hasAttribute(
-            "data-add-patient"
-          )
-        ) {
+        if (addButton.hasAttribute("data-add-patient")) {
           openPatientForm();
           return;
         }
 
-        if (
-          addButton.hasAttribute(
-            "data-add-service"
-          )
-        ) {
+        if (addButton.hasAttribute("data-add-service")) {
           openServiceForm();
           return;
         }
 
-        if (
-          addButton.hasAttribute(
-            "data-add-appointment"
-          )
-        ) {
+        if (addButton.hasAttribute("data-add-appointment")) {
           openAppointmentForm();
           return;
         }
       }
-
 
       /* -----------------------------------------------------
          BOOTSTRAP MODAL ADD BUTTONS
       ----------------------------------------------------- */
 
-      const modalButton =
-        event.target.closest(
-          "[data-bs-toggle='modal'][data-bs-target]"
-        );
+      const modalButton = event.target.closest(
+        "[data-bs-toggle='modal'][data-bs-target]"
+      );
 
       if (modalButton) {
-        const target =
-          modalButton.getAttribute(
-            "data-bs-target"
-          );
+        const target = modalButton.getAttribute("data-bs-target");
 
-        if (
-          target ===
-          "#departmentModal"
-        ) {
+        if (target === "#departmentModal") {
           openDepartmentForm();
         }
 
-        if (
-          target ===
-          "#doctorModal"
-        ) {
+        if (target === "#doctorModal") {
           openDoctorForm();
         }
 
-        if (
-          target ===
-          "#patientModal"
-        ) {
+        if (target === "#patientModal") {
           openPatientForm();
         }
 
-        if (
-          target ===
-          "#serviceModal"
-        ) {
+        if (target === "#serviceModal") {
           openServiceForm();
         }
 
-        if (
-          target ===
-          "#appointmentModal"
-        ) {
+        if (target === "#appointmentModal") {
           openAppointmentForm();
         }
       }
-
 
       /* -----------------------------------------------------
          NOTIFICATION
       ----------------------------------------------------- */
 
-      const notification =
-        event.target.closest(
-          "[data-notification-id]"
-        );
+      const notification = event.target.closest("[data-notification-id]");
 
       if (notification) {
         return;
       }
 
-
       /* -----------------------------------------------------
          SETTINGS USERS
       ----------------------------------------------------- */
 
-      const editUser =
-        event.target.closest(
-          "[data-edit-user]"
-        );
+      const editUser = event.target.closest("[data-edit-user]");
 
       if (editUser) {
-        const user =
-          usersData.find(
-            (item) =>
-              String(item.id) ===
-              String(
-                editUser.dataset.editUser
-              )
-          );
+        const user = usersData.find(
+          (item) => String(item.id) === String(editUser.dataset.editUser),
+        );
 
         if (user) {
           openUserForm(user);
@@ -6248,18 +6859,10 @@ function initPageEvents() {
         return;
       }
 
-      const deleteUser =
-        event.target.closest(
-          "[data-delete-user]"
-        );
+      const deleteUser = event.target.closest("[data-delete-user]");
 
       if (deleteUser) {
-        await deleteEntity(
-          "/users",
-          deleteUser.dataset
-            .deleteUser,
-          loadUsers
-        );
+        await deleteEntity("/users", deleteUser.dataset.deleteUser, loadUsers);
 
         return;
       }
@@ -6825,6 +7428,560 @@ function collectAppointmentSettings() {
         ? "1"
         : "0"
   };
+}
+
+/* =========================================================
+27.1 PATIENT REGISTRATION RECEIPT
+========================================================= */
+
+function printPatientReceipt(patient) {
+  if (!patient) {
+    Toast.error(
+      "لا توجد بيانات للمريض للطباعة."
+    );
+    return;
+  }
+
+  const name =
+    patient.name ||
+    patient.patient_name ||
+    "—";
+
+  const departmentName =
+    patient.department_name ||
+    patient.department?.name ||
+    "—";
+
+  const age =
+    patient.age ??
+    Helpers.calcAge(
+      patient.birth_date ||
+      patient.date_of_birth
+    );
+
+  const registeredAt =
+    patient.registered_at
+      ? new Date(patient.registered_at)
+      : new Date();
+
+  const dateText =
+    registeredAt.toLocaleDateString(
+      "ar-EG",
+      {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      }
+    );
+
+  const timeText =
+    registeredAt.toLocaleTimeString(
+      "ar-EG",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
+
+  const registeredBy =
+    patient.registered_by ||
+    Auth.getUser()?.name ||
+    Auth.getUser()?.username ||
+    "موظف النظام";
+
+  const receiptNumber =
+    `REC-${Date.now()}`;
+
+  const escape =
+    (value) =>
+      Helpers.escapeHTML(
+        value === null ||
+        value === undefined ||
+        value === ""
+          ? "—"
+          : String(value)
+      );
+
+  const printWindow =
+    window.open(
+      "",
+      "_blank",
+      "width=900,height=800"
+    );
+
+  if (!printWindow) {
+    Toast.error(
+      "تعذر فتح نافذة الطباعة. يرجى السماح بالنوافذ المنبثقة."
+    );
+    return;
+  }
+
+  printWindow.document.open();
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+
+    <head>
+      <meta charset="UTF-8">
+
+      <title>
+        إيصال تسجيل المريض
+      </title>
+
+      <style>
+
+        * {
+          box-sizing: border-box;
+        }
+
+        body {
+          margin: 0;
+          padding: 30px;
+          background: #f3f6f9;
+          font-family:
+            Tahoma,
+            Arial,
+            sans-serif;
+          color: #1f2937;
+          direction: rtl;
+        }
+
+        .receipt {
+          width: 210mm;
+          min-height: 297mm;
+          margin: 0 auto;
+          padding: 24mm 20mm;
+          background: #ffffff;
+          box-shadow:
+            0 8px 30px
+            rgba(0, 0, 0, 0.08);
+        }
+
+        .header {
+          text-align: center;
+          padding-bottom: 20px;
+          border-bottom: 2px solid #e5e7eb;
+        }
+
+        .brand {
+          font-size: 30px;
+          font-weight: 800;
+          color: #176b87;
+          margin-bottom: 8px;
+        }
+
+        .subtitle {
+          font-size: 15px;
+          color: #6b7280;
+        }
+
+        .receipt-title {
+          margin-top: 24px;
+          font-size: 23px;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .receipt-number {
+          margin-top: 8px;
+          font-size: 13px;
+          color: #6b7280;
+        }
+
+        .section {
+          margin-top: 25px;
+        }
+
+        .section-title {
+          margin-bottom: 12px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid #e5e7eb;
+          font-size: 17px;
+          font-weight: 700;
+          color: #176b87;
+        }
+
+        .grid {
+          display: grid;
+          grid-template-columns:
+            repeat(2, 1fr);
+          gap: 12px;
+        }
+
+        .field {
+          padding: 12px;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          background: #fafafa;
+        }
+
+        .label {
+          display: block;
+          margin-bottom: 5px;
+          font-size: 12px;
+          color: #6b7280;
+        }
+
+        .value {
+          font-size: 14px;
+          font-weight: 600;
+          color: #111827;
+          word-break: break-word;
+        }
+
+        .registration {
+          margin-top: 25px;
+          padding: 16px;
+          border-radius: 8px;
+          background: #f7fafc;
+          border: 1px solid #e5e7eb;
+        }
+
+        .registration-row {
+          display: flex;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 6px 0;
+          font-size: 13px;
+        }
+
+        .registration-row span:first-child {
+          color: #6b7280;
+        }
+
+        .registration-row span:last-child {
+          font-weight: 600;
+        }
+
+        .footer {
+          margin-top: 45px;
+          padding-top: 20px;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+          color: #6b7280;
+          font-size: 12px;
+          line-height: 1.8;
+        }
+
+        .actions {
+          display: flex;
+          justify-content: center;
+          gap: 10px;
+          margin-top: 25px;
+        }
+
+        .actions button {
+          border: 0;
+          border-radius: 7px;
+          padding: 10px 22px;
+          cursor: pointer;
+          font-size: 14px;
+        }
+
+        .print-btn {
+          background: #176b87;
+          color: #ffffff;
+        }
+
+        .close-btn {
+          background: #e5e7eb;
+          color: #374151;
+        }
+
+        @media print {
+
+          body {
+            padding: 0;
+            background: #ffffff;
+          }
+
+          .receipt {
+            width: 100%;
+            min-height: auto;
+            margin: 0;
+            padding: 15mm;
+            box-shadow: none;
+          }
+
+          .actions {
+            display: none;
+          }
+
+          @page {
+            size: A4;
+            margin: 0;
+          }
+        }
+
+        @media screen and (max-width: 700px) {
+
+          body {
+            padding: 10px;
+          }
+
+          .receipt {
+            width: 100%;
+            min-height: auto;
+            padding: 25px 18px;
+          }
+
+          .grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+      </style>
+    </head>
+
+    <body>
+
+      <div class="receipt">
+
+        <div class="header">
+
+          <div class="brand">
+            AmRash
+          </div>
+
+          <div class="subtitle">
+            نظام الإدارة الطبية
+          </div>
+
+          <div class="receipt-title">
+            إيصال تسجيل المريض
+          </div>
+
+          <div class="receipt-number">
+            رقم الإيصال:
+            ${escape(receiptNumber)}
+          </div>
+
+        </div>
+
+
+        <div class="section">
+
+          <div class="section-title">
+            بيانات المريض
+          </div>
+
+          <div class="grid">
+
+            <div class="field">
+              <span class="label">
+                رقم الملف
+              </span>
+
+              <span class="value">
+                ${escape(patient.file_number)}
+              </span>
+            </div>
+
+            <div class="field">
+              <span class="label">
+                اسم المريض
+              </span>
+
+              <span class="value">
+                ${escape(name)}
+              </span>
+            </div>
+
+            <div class="field">
+              <span class="label">
+                رقم الهاتف
+              </span>
+
+              <span class="value">
+                ${escape(patient.phone)}
+              </span>
+            </div>
+
+            <div class="field">
+              <span class="label">
+                البريد الإلكتروني
+              </span>
+
+              <span class="value">
+                ${escape(patient.email)}
+              </span>
+            </div>
+
+            <div class="field">
+              <span class="label">
+                النوع
+              </span>
+
+              <span class="value">
+                ${escape(patient.gender)}
+              </span>
+            </div>
+
+            <div class="field">
+              <span class="label">
+                العمر
+              </span>
+
+              <span class="value">
+                ${escape(age)}
+              </span>
+            </div>
+
+            <div class="field">
+              <span class="label">
+                تاريخ الميلاد
+              </span>
+
+              <span class="value">
+                ${escape(
+                  patient.birth_date ||
+                  patient.date_of_birth
+                )}
+              </span>
+            </div>
+
+            <div class="field">
+              <span class="label">
+                فصيلة الدم
+              </span>
+
+              <span class="value">
+                ${escape(patient.blood_type)}
+              </span>
+            </div>
+
+            <div class="field">
+              <span class="label">
+                القسم
+              </span>
+
+              <span class="value">
+                ${escape(departmentName)}
+              </span>
+            </div>
+
+            <div class="field">
+              <span class="label">
+                الحالة
+              </span>
+
+              <span class="value">
+                ${escape(
+                  patient.status === "active"
+                    ? "نشط"
+                    : patient.status === "inactive"
+                    ? "غير نشط"
+                    : patient.status
+                )}
+              </span>
+            </div>
+
+            <div class="field"
+                 style="grid-column: 1 / -1;">
+
+              <span class="label">
+                العنوان
+              </span>
+
+              <span class="value">
+                ${escape(patient.address)}
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="registration">
+
+          <div class="registration-row">
+            <span>
+              تاريخ التسجيل
+            </span>
+
+            <span>
+              ${escape(dateText)}
+            </span>
+          </div>
+
+          <div class="registration-row">
+            <span>
+              وقت التسجيل
+            </span>
+
+            <span>
+              ${escape(timeText)}
+            </span>
+          </div>
+
+          <div class="registration-row">
+            <span>
+              تم التسجيل بواسطة
+            </span>
+
+            <span>
+              ${escape(registeredBy)}
+            </span>
+          </div>
+
+        </div>
+
+
+        <div class="footer">
+
+          <div>
+            تم تسجيل المريض بنجاح في نظام AmRash
+          </div>
+
+          <div>
+            تم تصميم النظام بواسطة أمل راشد
+          </div>
+
+        </div>
+
+
+        <div class="actions">
+
+          <button
+            class="print-btn"
+            onclick="window.print()"
+          >
+            طباعة
+          </button>
+
+          <button
+            class="close-btn"
+            onclick="window.close()"
+          >
+            إغلاق
+          </button>
+
+        </div>
+
+      </div>
+
+      <script>
+        window.addEventListener(
+          "load",
+          function () {
+            setTimeout(
+              function () {
+                window.print();
+              },
+              500
+            );
+          }
+        );
+      <\/script>
+
+    </body>
+    </html>
+  `);
+
+  printWindow.document.close();
 }
 
 
