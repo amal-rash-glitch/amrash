@@ -327,7 +327,17 @@ hr { border-color: var(--brand-border); opacity: 1; }
 /* ============ الجداول ============ */
 .table-responsive { overflow-x: auto; }
 
-.table-box { width: 100%; border-collapse: separate; border-spacing: 0; }
+.table-box {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-box table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
 .table-box thead th {
   background: var(--brand-light); color: #4b5c6b; font-size: 13px;
   font-weight: 700; text-align: right; padding: 13px 16px;
@@ -373,69 +383,6 @@ hr { border-color: var(--brand-border); opacity: 1; }
 }
 .pagination .page-item.disabled .page-link { opacity: .5; }
 
-/* ============ النوافذ المنبثقة ============ */
-
-.modal-dialog {
-  max-width: 900px;
-  height: calc(100vh - 40px);
-  margin: 20px auto;
-  display: flex;
-  align-items: center;
-}
-
-.modal-content {
-  width: 100%;
-  max-height: calc(100vh - 40px);
-  border: 0;
-  border-radius: var(--radius-lg);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.modal-header {
-  flex: 0 0 auto;
-  border-bottom: 1px solid var(--brand-border);
-  padding: 16px 22px;
-}
-
-.modal-title {
-  font-weight: 700;
-  font-size: 18px;
-}
-
-.modal-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 22px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-
-.modal-footer {
-  flex: 0 0 auto;
-  border-top: 1px solid var(--brand-border);
-  padding: 14px 22px;
-  background: var(--brand-surface, #fff);
-}
-
-.modal-backdrop.show {
-  opacity: .45;
-}
-
-.modal-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-  background: #c7d2de;
-  border-radius: 10px;
-}
-
-.modal-body::-webkit-scrollbar-track {
-  background: transparent;
-}
 
 /* =========================================================
    النوافذ المنبثقة — Modal System
@@ -631,40 +578,1044 @@ hr { border-color: var(--brand-border); opacity: 1; }
 /* ============ التنبيهات داخل الصفحة ============ */
 .alert { border-radius: var(--radius); border: 1px solid transparent; font-size: 14.5px; }
 
-/* ============ الاستجابة ============ */
-@media (max-width: 992px) {
-  .login-wrapper { grid-template-columns: 1fr; }
-  .login-brand { display: none; }
-  .login-form-side { min-height: 100vh; }
+
+
+
+/* =========================================================
+   RESPONSIVE SYSTEM — AmRash
+   يغطي جميع صفحات النظام:
+   Dashboard / Patients / Doctors / Departments
+   Services / Appointments / Reports / Settings / Profile
+   Login
+   ========================================================= */
+
+
+/* =========================================================
+   1. GLOBAL RESPONSIVE
+   ========================================================= */
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
 }
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+
+/* =========================================================
+   2. LARGE TABLET / SMALL DESKTOP
+   ========================================================= */
+
+@media (max-width: 1199px) {
+
+  .page-content {
+    padding: 20px;
+  }
+
+  .stat-card {
+    padding: 18px;
+  }
+
+  .stat-icon {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .card-head {
+    gap: 12px;
+  }
+
+  .toolbar {
+    gap: 10px;
+  }
+
+  .search-input-wrap {
+    min-width: 180px;
+  }
+
+  .table-box {
+    overflow-x: auto;
+  }
+
+  .settings-nav-card {
+    position: static;
+  }
+
+}
+
+
+/* =========================================================
+   3. TABLET
+   ========================================================= */
+
+@media (max-width: 992px) {
+
+  /* ---------- LOGIN ---------- */
+
+  .login-wrapper {
+    grid-template-columns: 1fr;
+    min-height: 100vh;
+  }
+
+  .login-brand {
+    display: none;
+  }
+
+  .login-form-side {
+    min-height: 100vh;
+    width: 100%;
+  }
+
+  .login-form-box {
+    width: min(100%, 460px);
+  }
+
+
+  /* ---------- SIDEBAR ---------- */
+
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform .3s ease;
+    z-index: 1040;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .main-area {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .btn-mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+
+  /* ---------- TOPBAR ---------- */
+
+  .topbar {
+    width: 100%;
+  }
+
+  .topbar-right {
+    gap: 8px;
+  }
+
+
+  /* ---------- SETTINGS ---------- */
+
+  .settings-nav-card {
+    position: static;
+    top: auto;
+  }
+
+  .settings-pane {
+    width: 100%;
+  }
+
+
+  /* ---------- TOOLBAR ---------- */
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .toolbar .search-input-wrap {
+    flex: 1 1 240px;
+  }
+
+  .toolbar > .form-control,
+  .toolbar > .form-select {
+    flex: 1 1 180px;
+  }
+
+
+  /* ---------- TABLES ---------- */
+
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-box {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+
+  /* ---------- MODALS ---------- */
+
+  .modal-dialog {
+    max-width: calc(100% - 30px);
+  }
+
+  .modal-dialog.modal-lg {
+    max-width: calc(100% - 30px);
+  }
+
+
+  /* ---------- PAGE HEAD ---------- */
+
+  .page-head {
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .page-head > div {
+    max-width: 100%;
+  }
+
+
+  /* ---------- STATS ---------- */
+
+  .stat-card {
+    height: auto;
+    min-height: 100px;
+  }
+
+
+  /* ---------- NAV PILLS ---------- */
+
+  .nav-pills {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-pills .nav-item {
+    flex: 0 0 auto;
+  }
+
+
+  /* ---------- CHART ---------- */
+
+  .chart-bar {
+    gap: 8px;
+  }
+
+}
+
+
+/* =========================================================
+   4. MOBILE
+   ========================================================= */
 
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(100%); }
-  .sidebar.open { transform: translateX(0); }
-  .main-area { margin-left: 0; }
-  .btn-mobile-toggle { display: block; }
-  .page-content { padding: 16px; }
-  .user-chip .u-name, .user-chip .u-role { display: none; }
-  .page-head h1 { font-size: 20px; }
-  .stat-info .stat-value { font-size: 22px; }
-  .chart-bar .bar-label { width: 100px; }
+
+  /* ---------- GENERAL ---------- */
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .page-content {
+    padding: 16px;
+  }
+
+
+  /* ---------- SIDEBAR ---------- */
+
+  .sidebar {
+    left: 0;
+    right: auto;
+    transform: translateX(-100%);
+    width: min(290px, 86vw);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .main-area {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+
+  /* ---------- TOPBAR ---------- */
+
+  .topbar {
+    min-height: 60px;
+    height: 60px;
+    padding: 0 12px;
+  }
+
+  .page-title {
+    font-size: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbar-right {
+    gap: 6px;
+  }
+
+  .icon-btn,
+  .btn-mobile-toggle {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+
+  .user-chip .u-name,
+  .user-chip .u-role {
+    display: none;
+  }
+
+  .user-chip {
+    padding: 0;
+    gap: 0;
+  }
+
+  .avatar {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+  }
+
+
+  /* ---------- PAGE HEAD ---------- */
+
+  .page-head {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+
+  .page-head h1 {
+    font-size: 20px;
+    line-height: 1.5;
+  }
+
+  .page-head p {
+    font-size: 13px;
+  }
+
+  .page-head .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+
+  /* ---------- CARDS ---------- */
+
+  .card-box {
+    width: 100%;
+    border-radius: 12px;
+  }
+
+  .card-head {
+    flex-wrap: wrap;
+    padding: 14px 16px;
+  }
+
+  .card-head h3,
+  .card-head h4 {
+    font-size: 16px;
+  }
+
+  .card-body-p {
+    padding: 16px;
+  }
+
+
+  /* ---------- STAT CARDS ---------- */
+
+  .stat-card {
+    padding: 15px;
+    min-height: 92px;
+  }
+
+  .stat-icon {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    font-size: 18px;
+  }
+
+  .stat-info {
+    min-width: 0;
+  }
+
+  .stat-value,
+  .stat-info .stat-value {
+    font-size: 21px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+  }
+
+  .stat-trend {
+    font-size: 11px;
+  }
+
+
+  /* ---------- TOOLBAR / FILTERS ---------- */
+
+  .toolbar {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .toolbar > *,
+  .toolbar .search-input-wrap,
+  .toolbar .form-control,
+  .toolbar .form-select {
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+  }
+
+  .search-input-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .toolbar .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+
+  /* ---------- FORM ---------- */
+
+  .form-control,
+  .form-select {
+    min-height: 42px;
+    font-size: 14px;
+  }
+
+  textarea.form-control {
+    min-height: 110px;
+  }
+
+  .form-label {
+    font-size: 13px;
+  }
+
+
+  /* ---------- TABLE ---------- */
+
+  .table-responsive,
+  .table-box {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-box table {
+    min-width: 720px;
+  }
+
+  .table-box th,
+  .table-box td {
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  .table-box .btn {
+    white-space: nowrap;
+  }
+
+
+  /* ---------- PAGINATION ---------- */
+
+  .pagination {
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+  }
+
+  .pagination .page-link {
+    min-width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+
+  /* ---------- MODALS ---------- */
+
+  .modal-dialog,
+  .modal-dialog.modal-lg {
+    width: auto;
+    max-width: none;
+    margin: 10px;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-height: calc(100vh - 20px);
+    overflow: hidden;
+    border-radius: 12px;
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-header h5,
+  .modal-header h4 {
+    font-size: 16px;
+  }
+
+  .modal-body {
+    padding: 16px;
+    overflow-y: auto;
+  }
+
+  .modal-footer {
+    padding: 12px 16px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .modal-footer .btn {
+    flex: 1 1 130px;
+  }
+
+
+  /* ---------- NAV PILLS ---------- */
+
+  .nav-pills {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 3px;
+  }
+
+  .nav-pills .nav-link {
+    white-space: nowrap;
+  }
+
+
+  /* ---------- CHART ---------- */
+
+  .chart-bar {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .chart-bar .bar-label {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 5px;
+  }
+
+  .chart-bar .bar-track {
+    width: 100%;
+  }
+
+
+  /* ---------- ACTIVITY ---------- */
+
+  .activity-list {
+    width: 100%;
+  }
+
+  .activity-item {
+    gap: 10px;
+    padding: 12px 0;
+  }
+
+
+  /* ---------- DEPARTMENT CARDS ---------- */
+
+  .dept-card {
+    height: auto;
+    min-height: 150px;
+  }
+
+
+  /* ---------- EMPTY STATE ---------- */
+
+  .empty-state {
+    padding: 30px 16px;
+  }
+
+
+  /* ---------- ALERT ---------- */
+
+  .alert {
+    width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+
+  /* ---------- DROPDOWNS ---------- */
+
+  .dropdown-menu {
+    max-width: calc(100vw - 24px);
+    white-space: normal;
+  }
+
+
+  /* ---------- PROFILE ---------- */
+
+  #profileAvatar {
+    width: 96px !important;
+    height: 96px !important;
+    font-size: 34px !important;
+  }
+
+  .admin-avatar {
+    width: 76px;
+    height: 76px;
+    min-width: 76px;
+  }
+
+  .admin-user-info {
+    min-width: 0;
+  }
+
+
+  /* ---------- SETTINGS ---------- */
+
+  .settings-nav-card {
+    position: static;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+
+  #settingsNav {
+    width: 100%;
+  }
+
+  #settingsNav .list-group-item {
+    min-height: 46px;
+  }
+
+  .password-section {
+    padding: 16px;
+  }
+
+  .password-input {
+    width: 100%;
+  }
+
+  .password-hint {
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .backup-info {
+    flex-wrap: wrap;
+  }
+
+
+  /* ---------- LOGIN ---------- */
+
+  .login-form-side {
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+
+  .login-form-box {
+    width: 100%;
+    max-width: 460px;
+  }
+
+  .login-form-box .form-head h1 {
+    font-size: 24px;
+  }
+
+  .login-form-box .form-head p {
+    font-size: 13px;
+  }
+
+  .btn-login {
+    min-height: 46px;
+  }
+
 }
+
+
+/* =========================================================
+   5. SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 576px) {
+
+  .page-content {
+    padding: 12px;
+  }
+
+
+  /* ---------- TOPBAR ---------- */
+
+  .topbar {
+    padding: 0 8px;
+  }
+
+  .page-title {
+    font-size: 16px;
+    max-width: 42vw;
+  }
+
+  .icon-btn,
+  .btn-mobile-toggle {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+  }
+
+  .avatar {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+
+
+  /* ---------- PAGE HEAD ---------- */
+
+  .page-head {
+    gap: 10px;
+  }
+
+  .page-head h1 {
+    font-size: 19px;
+  }
+
+  .page-head .btn {
+    width: 100%;
+  }
+
+
+  /* ---------- CARD ---------- */
+
+  .card-head {
+    padding: 12px 14px;
+  }
+
+  .card-body-p {
+    padding: 14px;
+  }
+
+
+  /* ---------- STATS ---------- */
+
+  .stat-card {
+    padding: 13px;
+  }
+
+  .stat-icon {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    font-size: 16px;
+  }
+
+  .stat-value,
+  .stat-info .stat-value {
+    font-size: 19px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+
+  /* ---------- TABLE ---------- */
+
+  .table-box table {
+    min-width: 680px;
+  }
+
+
+  /* ---------- MODAL ---------- */
+
+  .modal-dialog,
+  .modal-dialog.modal-lg {
+    margin: 6px;
+  }
+
+  .modal-content {
+    max-height: calc(100vh - 12px);
+    border-radius: 10px;
+  }
+
+  .modal-body {
+    padding: 14px;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    flex: none;
+  }
+
+
+  /* ---------- SETTINGS ---------- */
+
+  .settings-nav-card {
+    margin-bottom: 12px;
+  }
+
+  #settingsNav .list-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #settingsNav .list-group-item {
+    border-radius: 0;
+    min-height: 48px;
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  .settings-icon {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+  }
+
+
+  /* ---------- LOGIN ---------- */
+
+  .login-form-side {
+    padding: 20px 12px;
+  }
+
+  .login-form-box {
+    padding: 20px 16px;
+  }
+
+  .login-form-box .form-head h1 {
+    font-size: 22px;
+  }
+
+  .remember-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px;
+  }
+
+}
+
+
+/* =========================================================
+   6. VERY SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 400px) {
+
+  .page-content {
+    padding: 10px;
+  }
+
+  .topbar {
+    height: 56px;
+    min-height: 56px;
+  }
+
+  .page-title {
+    display: none;
+  }
+
+  .topbar-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .page-head h1 {
+    font-size: 18px;
+  }
+
+  .card-head h3,
+  .card-head h4 {
+    font-size: 15px;
+  }
+
+  .stat-card {
+    padding: 11px;
+  }
+
+  .stat-value,
+  .stat-info .stat-value {
+    font-size: 18px;
+  }
+
+  .modal-dialog,
+  .modal-dialog.modal-lg {
+    margin: 4px;
+  }
+
+  .modal-body {
+    padding: 12px;
+  }
+
+  #settingsNav .list-group {
+    grid-template-columns: 1fr;
+  }
+
+  .table-box table {
+    min-width: 640px;
+  }
+
+}
+
+
+/* =========================================================
+   7. MOBILE LANDSCAPE
+   ========================================================= */
+
+@media (max-width: 768px) and (orientation: landscape) {
+
+  .topbar {
+    height: 56px;
+    min-height: 56px;
+  }
+
+  .modal-content {
+    max-height: calc(100vh - 12px);
+  }
+
+  .modal-dialog {
+    margin: 6px 10px;
+  }
+
+  .modal-body {
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+  }
+
+  .login-form-side {
+    padding-top: 15px;
+    padding-bottom: 15px;
+  }
+
+}
+
+
+/* =========================================================
+   8. ACCESSIBILITY / TOUCH
+   ========================================================= */
+
+@media (hover: none) and (pointer: coarse) {
+
+  .btn,
+  .nav-link,
+  .dropdown-item,
+  .list-group-item,
+  .nav-pills .nav-link {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .sidebar-nav .nav-link {
+    min-height: 44px;
+  }
+
+  .sidebar-footer .nav-link {
+    min-height: 44px;
+  }
+
+  .icon-btn,
+  .btn-mobile-toggle {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+}
+
+
+/* =========================================================
+   9. SIDEBAR BACKDROP
+   ========================================================= */
 
 .sidebar-backdrop {
-  position: fixed; inset: 0; background: rgba(15,34,51,.4);
-  z-index: 1035; display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 34, 51, .4);
+  z-index: 1035;
+  display: none;
 }
-.sidebar-backdrop.show { display: block; }
 
-/* ============ أنماط الطباعة المساندة في style ============ */
-.print-only { display: none; }
+.sidebar-backdrop.show {
+  display: block;
+}
+/* =========================================================
+   PRINT
+   ========================================================= */
+
+.print-only {
+  display: none;
+}
+
 @media print {
-  .sidebar, .topbar, .btn, .pagination, .toolbar { display: none !important; }
-  .main-area { margin-left: 0 !important; }
-  .page-content { padding: 0 !important; }
-  .card-box { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
-  .print-only { display: block; }
-  body { background: #fff !important; }
-  .table-box thead th { background: #f0f0f0 !important; }
-  a[href]:after { content: ""; }
+
+  .sidebar,
+  .topbar,
+  .btn,
+  .pagination,
+  .toolbar,
+  .sidebar-backdrop,
+  .btn-mobile-toggle {
+    display: none !important;
+  }
+
+  .main-area {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+  }
+
+  .page-content {
+    padding: 0 !important;
+  }
+
+  .card-box {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    page-break-inside: avoid;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  .table-box thead th {
+    background: #f0f0f0 !important;
+  }
+
+  a[href]:after {
+    content: "";
+  }
 }
