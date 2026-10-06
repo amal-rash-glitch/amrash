@@ -766,7 +766,6 @@ app.get(
     res.json(rows[0]);
   }),
 );
-
 // ==========================================================
 // DOCTORS - CREATE
 // ==========================================================
@@ -775,91 +774,169 @@ app.post(
   "/api/doctors",
   authMiddleware,
   asyncHandler(async (req, res) => {
-    const name = clean(req.body.doctor_name || req.body.name);
 
-    const specialty = clean(req.body.specialty);
+    const name =
+      clean(req.body.doctor_name || req.body.name);
 
-    const phone = clean(req.body.phone);
-    const email = clean(req.body.email);
-    const gender = clean(req.body.gender);
+    const specialty =
+      clean(req.body.specialty);
 
-    const departmentId = numberOrNull(req.body.department_id);
+    const degree =
+      clean(req.body.degree);
 
-    const consultationFee = numberOrNull(
-      req.body.consultation_fee ?? req.body.fee,
-    );
+    const phone =
+      clean(req.body.phone);
 
-    const bio = clean(req.body.bio);
+    const email =
+      clean(req.body.email);
 
-    const status = normalizeStatus(req.body.status, "Active");
+    const gender =
+      clean(req.body.gender);
 
-    let departmentName = clean(req.body.department);
+    const departmentId =
+      numberOrNull(req.body.department_id);
 
-    if (!departmentName && departmentId) {
-      const [departmentRows] = await pool.query(
-        `
-                    SELECT department_name
-                    FROM departments
-                    WHERE id = ?
-                    LIMIT 1
-                    `,
-        [departmentId],
+    const consultationFee =
+      numberOrNull(
+        req.body.consultation_fee ??
+        req.body.fee
       );
 
+    const bio =
+      clean(req.body.bio);
+
+    const status =
+      normalizeStatus(
+        req.body.status,
+        "Active"
+      );
+
+    let departmentName =
+      clean(req.body.department);
+
+
+    // ------------------------------------------------------
+    // جلب اسم القسم من قاعدة البيانات إذا تم إرسال رقمه فقط
+    // ------------------------------------------------------
+
+    if (
+      !departmentName &&
+      departmentId
+    ) {
+
+      const [departmentRows] =
+        await pool.query(
+          `
+            SELECT department_name
+            FROM departments
+            WHERE id = ?
+            LIMIT 1
+          `,
+          [departmentId]
+        );
+
       if (departmentRows.length) {
-        departmentName = departmentRows[0].department_name;
+
+        departmentName =
+          departmentRows[0].department_name;
       }
     }
 
-    if (!name || !specialty) {
+
+    // ------------------------------------------------------
+    // التحقق من البيانات المطلوبة
+    // ------------------------------------------------------
+
+    if (
+      !name ||
+      !specialty
+    ) {
+
       return res.status(400).json({
-        message: "اسم الطبيب والتخصص مطلوبان",
+        message:
+          "اسم الطبيب والتخصص مطلوبان",
       });
     }
 
-    const [result] = await pool.query(
-      `
-            INSERT INTO doctors
-            (
-                doctor_name,
-                specialty,
-                degree,
-                phone,
-                email,
-                gender,
-                department,
-                department_id,
-                consultation_fee,
-                bio,
-                status
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `,
-      [
-        name,
-        specialty,
-        clean(req.body.degree),
-        phone,
-        email,
-        gender,
-        departmentName,
-        departmentId,
-        consultationFee || 0,
-        bio,
-        status,
-      ],
+
+    // ------------------------------------------------------
+    // إضافة الطبيب
+    // ------------------------------------------------------
+
+    const [result] =
+      await pool.query(
+        `
+          INSERT INTO doctors
+          (
+            doctor_name,
+            specialty,
+            degree,
+            phone,
+            email,
+            gender,
+            department,
+            department_id,
+            consultation_fee,
+            bio,
+            status
+          )
+          VALUES
+          (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?
+          )
+        `,
+        [
+          name,
+          specialty,
+          degree,
+          phone,
+          email,
+          gender,
+          departmentName,
+          departmentId,
+          consultationFee || 0,
+          bio,
+          status,
+        ]
+      );
+
+
+    // ------------------------------------------------------
+    // إشعار
+    // ------------------------------------------------------
+
+    await createNotification(
+      "طبيب جديد",
+      `تمت إضافة الطبيب: ${name}`
     );
 
-    await createNotification("طبيب جديد", `تمت إضافة الطبيب: ${name}`);
+
+    // ------------------------------------------------------
+    // الاستجابة
+    // ------------------------------------------------------
 
     res.status(201).json({
+
       success: true,
-      message: "تمت إضافة الطبيب بنجاح",
-      id: result.insertId,
+
+      message:
+        "تمت إضافة الطبيب بنجاح",
+
+      id:
+        result.insertId,
     });
   }),
 );
-
 // ==========================================================
 // DOCTORS - UPDATE
 // ==========================================================
