@@ -222,13 +222,20 @@
 
         <div class="modal-body">
           <input type="hidden" id="apptId">
+          <input type="hidden" id="aPatientId">
 
           <div class="row g-3">
 
-            <div class="col-md-6">
-              <label class="form-label">المريض *</label>
-              <select class="form-select" id="aPatient" required></select>
-            </div>
+ <div class="col-md-6">
+  <label class="form-label">اسم المريض *</label>
+  <input
+    type="text"
+    class="form-control"
+    id="aPatient"
+    placeholder="أدخل اسم المريض"
+    required
+  >
+</div>
 
             <div class="col-md-6">
               <label class="form-label">القسم *</label>
@@ -276,10 +283,16 @@
               </select>
             </div>
 
-            <div class="col-md-6">
-              <label class="form-label">رقم الهاتف للتواصل</label>
-              <input type="tel" class="form-control" id="aPhone">
-            </div>
+  <div class="col-md-6">
+  <label class="form-label">رقم الهاتف *</label>
+  <input
+    type="tel"
+    class="form-control"
+    id="aPhone"
+    placeholder="أدخل رقم هاتف المريض"
+    required
+  >
+</div>
 
             <div class="col-12">
               <label class="form-label">ملاحظات</label>

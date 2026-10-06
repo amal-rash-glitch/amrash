@@ -2717,7 +2717,7 @@ async function loadPatients() {
 
   const selects =
     document.querySelectorAll(
-      "#aPatient,#filterPatient"
+      "#filterPatient"
     );
 
   if (
@@ -2964,62 +2964,41 @@ function renderPatients() {
 }
 
 function populatePatientSelect() {
-  const selectors = [
-    "aPatient",
-    "filterPatient"
-  ];
+  const select = document.getElementById("filterPatient");
 
-  selectors.forEach((id) => {
-    const select =
-      document.getElementById(id);
+  if (!select) {
+    return;
+  }
 
-    if (!select) {
-      return;
-    }
+  const currentValue = select.value;
 
-    const currentValue =
-      select.value;
+  const placeholder = select.options[0]
+    ? select.options[0].textContent
+    : "اختر المريض";
 
-    const placeholder =
-      select.options[0]
-        ? select.options[0].textContent
-        : "اختر المريض";
+  select.innerHTML = `
+    <option value="">
+      ${Helpers.escapeHTML(placeholder)}
+    </option>
+  `;
 
-    select.innerHTML = `
-      <option value="">
-        ${Helpers.escapeHTML(placeholder)}
-      </option>
-    `;
+  patientsData.forEach((patient) => {
+    const option = document.createElement("option");
 
-    patientsData.forEach((patient) => {
-      const option =
-        document.createElement(
-          "option"
-        );
+    option.value = patient.id;
 
-      option.value =
-        patient.id;
+    const name = patient.name || patient.patient_name || "مريض";
 
-      const name =
-        patient.name ||
-        patient.patient_name ||
-        "مريض";
+    const fileNumber = patient.file_number ? ` — ${patient.file_number}` : "";
 
-      const fileNumber =
-        patient.file_number
-          ? ` — ${patient.file_number}`
-          : "";
+    option.textContent = `${name}${fileNumber}`;
 
-      option.textContent =
-        `${name}${fileNumber}`;
-
-      select.appendChild(option);
-    });
-
-    if (currentValue) {
-      select.value = currentValue;
-    }
+    select.appendChild(option);
   });
+
+  if (currentValue) {
+    select.value = currentValue;
+  }
 }
 
 function openPatientForm(
@@ -4128,223 +4107,209 @@ function updateAppointmentStats() {
   );
 }
 
-function openAppointmentForm(
-  appointment = null
-) {
-  editingAppointmentId =
-    appointment?.id || null;
+function openAppointmentForm(appointment = null) {
+  editingAppointmentId = appointment?.id || null;
 
-  Helpers.setValue(
-    "appointmentId",
-    appointment?.id || ""
-  );
+  Helpers.setValue("appointmentId", appointment?.id || "");
 
+  // اسم المريض
   Helpers.setValue(
     "aPatient",
-    appointment?.patient_id ||
-    appointment?.patient?.id ||
-    ""
+    appointment?.patient_name ||
+      appointment?.patient?.name ||
+      appointment?.name ||
+      "",
+  );
+
+  // رقم الهاتف
+  Helpers.setValue(
+    "aPhone",
+    appointment?.patient_phone ||
+      appointment?.patient?.phone ||
+      appointment?.phone ||
+      "",
+  );
+
+  // معرّف المريض الموجود عند تعديل موعد
+  Helpers.setValue(
+    "aPatientId",
+    appointment?.patient_id || appointment?.patient?.id || "",
   );
 
   Helpers.setValue(
     "aDoctor",
-    appointment?.doctor_id ||
-    appointment?.doctor?.id ||
-    ""
+    appointment?.doctor_id || appointment?.doctor?.id || "",
   );
 
   Helpers.setValue(
     "aDepartment",
-    appointment?.department_id ||
-    appointment?.department?.id ||
-    ""
+    appointment?.department_id || appointment?.department?.id || "",
   );
 
   Helpers.setValue(
     "aService",
-    appointment?.service_id ||
-    appointment?.service?.id ||
-    ""
+    appointment?.service_id || appointment?.service?.id || "",
   );
 
-  Helpers.setValue(
-    "aType",
-    appointment?.type ||
-    ""
-  );
+  Helpers.setValue("aType", appointment?.type || "");
 
   Helpers.setValue(
     "aDate",
-    appointment?.appointment_date ||
-    appointment?.date ||
-    ""
+    appointment?.appointment_date || appointment?.date || "",
   );
 
   Helpers.setValue(
     "aTime",
-    appointment?.appointment_time ||
-    appointment?.time ||
-    ""
+    appointment?.appointment_time || appointment?.time || "",
   );
 
-  Helpers.setValue(
-    "aStatus",
-    appointment?.status ||
-    "pending"
-  );
+  Helpers.setValue("aStatus", appointment?.status || "pending");
 
-  Helpers.setValue(
-    "aNotes",
-    appointment?.notes ||
-    ""
-  );
+  Helpers.setValue("aNotes", appointment?.notes || "");
 
-  const title =
-    document.getElementById(
-      "appointmentModalLabel"
-    );
+  const title = document.getElementById("appointmentModalTitle");
 
   if (title) {
-    title.textContent =
-      appointment
-        ? "تعديل الموعد"
-        : "إضافة موعد";
+    title.textContent = appointment ? "تعديل الموعد" : "إضافة موعد جديد";
   }
 
-  showModal(
-    "appointmentModal"
-  );
+  showModal("appointmentModal");
 }
 
 async function saveAppointment() {
-  const patientId =
-    Helpers.getValue(
-      "aPatient"
-    );
+  const patientName = Helpers.getValue("aPatient").trim();
 
-  const doctorId =
-    Helpers.getValue(
-      "aDoctor"
-    );
+  const patientPhone = Helpers.getValue("aPhone").trim();
 
-  const departmentId =
-    Helpers.getValue(
-      "aDepartment"
-    );
+  const existingPatientId = Helpers.getValue("aPatientId");
 
-  const date =
-    Helpers.getValue(
-      "aDate"
-    );
+  const doctorId = Helpers.getValue("aDoctor");
 
-  const time =
-    Helpers.getValue(
-      "aTime"
-    );
+  const departmentId = Helpers.getValue("aDepartment");
 
-  if (!patientId) {
-    Toast.error(
-      "يرجى اختيار المريض."
-    );
+  const date = Helpers.getValue("aDate");
+
+  const time = Helpers.getValue("aTime");
+
+  if (!patientName) {
+    Toast.error("يرجى إدخال اسم المريض.");
+    return;
+  }
+
+  if (!patientPhone) {
+    Toast.error("يرجى إدخال رقم هاتف المريض.");
     return;
   }
 
   if (!doctorId) {
-    Toast.error(
-      "يرجى اختيار الطبيب."
-    );
+    Toast.error("يرجى اختيار الطبيب.");
     return;
   }
 
   if (!departmentId) {
-    Toast.error(
-      "يرجى اختيار القسم."
-    );
+    Toast.error("يرجى اختيار القسم.");
     return;
   }
 
   if (!date) {
-    Toast.error(
-      "يرجى اختيار تاريخ الموعد."
-    );
+    Toast.error("يرجى اختيار تاريخ الموعد.");
     return;
   }
 
   if (!time) {
-    Toast.error(
-      "يرجى اختيار وقت الموعد."
-    );
+    Toast.error("يرجى اختيار وقت الموعد.");
     return;
   }
 
-  const body = {
-    patient_id: patientId,
-    doctor_id: doctorId,
-    department_id: departmentId,
-    service_id:
-      Helpers.getValue(
-        "aService"
-      ) || null,
-    type:
-      Helpers.getValue(
-        "aType"
-      ),
-    appointment_date: date,
-    date,
-    appointment_time: time,
-    time,
-    status:
-      Helpers.getValue(
-        "aStatus"
-      ) || "pending",
-    notes:
-      Helpers.getValue(
-        "aNotes"
-      ).trim(),
-    created_by:
-      Auth.getUser()?.id || null
-  };
-
   try {
-    if (editingAppointmentId) {
-      await API.put(
-        `/appointments/${encodeURIComponent(
-          editingAppointmentId
-        )}`,
-        body
-      );
+    let patientId = existingPatientId || null;
 
-      Toast.success(
-        "تم تحديث الموعد بنجاح."
-      );
-    } else {
-      await API.post(
-        "/appointments",
-        body
-      );
+    /*
+     * عند إضافة موعد جديد:
+     * إنشاء المريض تلقائيًا من داخل الحجز.
+     */
+    if (!editingAppointmentId) {
+      const patientBody = {
+        name: patientName,
+        patient_name: patientName,
+        phone: patientPhone,
+        department_id: departmentId,
+        status: "active",
+      };
 
-      Toast.success(
-        "تمت إضافة الموعد بنجاح."
-      );
+      const patientResult = await API.post("/patients", patientBody);
+
+      patientId =
+        patientResult?.id ||
+        patientResult?.patient?.id ||
+        patientResult?.data?.id ||
+        patientResult?.data?.patient?.id ||
+        patientResult?.patient_id ||
+        null;
+
+      if (!patientId) {
+        console.error("Patient creation response:", patientResult);
+
+        throw new Error("تم إنشاء المريض لكن تعذر الحصول على رقم المريض.");
+      }
     }
 
-    hideModal(
-      "appointmentModal"
-    );
+    /*
+     * في حالة تعديل موعد قديم،
+     * نستخدم المريض المرتبط بالموعد.
+     */
+    if (editingAppointmentId && !patientId) {
+      throw new Error("تعذر تحديد المريض المرتبط بالموعد.");
+    }
+
+    const body = {
+      patient_id: patientId,
+
+      doctor_id: doctorId,
+
+      department_id: departmentId,
+
+      service_id: Helpers.getValue("aService") || null,
+
+      type: Helpers.getValue("aType"),
+
+      appointment_date: date,
+
+      date,
+
+      appointment_time: time,
+
+      time,
+
+      status: Helpers.getValue("aStatus") || "pending",
+
+      notes: Helpers.getValue("aNotes").trim(),
+
+      created_by: Auth.getUser()?.id || null,
+    };
+
+    if (editingAppointmentId) {
+      await API.put(
+        `/appointments/${encodeURIComponent(editingAppointmentId)}`,
+        body,
+      );
+
+      Toast.success("تم تحديث الموعد بنجاح.");
+    } else {
+      await API.post("/appointments", body);
+
+      Toast.success("تمت إضافة الموعد والمريض بنجاح.");
+    }
+
+    hideModal("appointmentModal");
 
     editingAppointmentId = null;
 
     await loadAppointments();
   } catch (error) {
-    console.error(
-      "Save appointment error:",
-      error
-    );
+    console.error("Save appointment error:", error);
 
-    Toast.error(
-      error.message ||
-      "تعذر حفظ الموعد."
-    );
+    Toast.error(error.message || "تعذر حفظ الموعد.");
   }
 }
 
