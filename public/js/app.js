@@ -793,50 +793,32 @@ function initActiveSidebar() {
 ========================================================= */
 
 function initSidebar() {
-  const sidebar =
-    document.querySelector(".sidebar");
+  const sidebar = document.querySelector(".sidebar");
 
-  const toggle =
-    document.querySelector(
-      ".btn-mobile-toggle,#mobileToggle"
-    );
+  const toggle = document.querySelector(".btn-mobile-toggle, #mobileToggle");
 
   if (!sidebar || !toggle) {
     return;
   }
 
-  let backdrop =
-    document.querySelector(
-      ".sidebar-backdrop"
-    );
+  let backdrop = document.querySelector(".sidebar-backdrop");
 
   if (!backdrop) {
     backdrop = document.createElement("div");
-
-    backdrop.className =
-      "sidebar-backdrop";
-
-    backdrop.style.cssText = `
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.35);
-      z-index:1039;
-      display:none;
-    `;
-
+    backdrop.className = "sidebar-backdrop";
     document.body.appendChild(backdrop);
   }
 
   const openSidebar = () => {
-    sidebar.classList.add("show");
+    sidebar.classList.add("open");
     document.body.classList.add("sidebar-open");
-    backdrop.style.display = "block";
+    backdrop.classList.add("show");
   };
 
   const closeSidebar = () => {
-    sidebar.classList.remove("show");
+    sidebar.classList.remove("open");
     document.body.classList.remove("sidebar-open");
-    backdrop.style.display = "none";
+    backdrop.classList.remove("show");
   };
 
   if (!toggle.dataset.amrashSidebarBound) {
@@ -844,8 +826,9 @@ function initSidebar() {
 
     toggle.addEventListener("click", (event) => {
       event.preventDefault();
+      event.stopPropagation();
 
-      if (sidebar.classList.contains("show")) {
+      if (sidebar.classList.contains("open")) {
         closeSidebar();
       } else {
         openSidebar();
@@ -856,29 +839,22 @@ function initSidebar() {
   if (!backdrop.dataset.amrashSidebarBound) {
     backdrop.dataset.amrashSidebarBound = "1";
 
-    backdrop.addEventListener(
-      "click",
-      closeSidebar
-    );
+    backdrop.addEventListener("click", closeSidebar);
   }
 
-  sidebar
-    .querySelectorAll("a")
-    .forEach((link) => {
-      if (link.dataset.amrashSidebarLinkBound) {
-        return;
+  sidebar.querySelectorAll("a").forEach((link) => {
+    if (link.dataset.amrashSidebarLinkBound) {
+      return;
+    }
+
+    link.dataset.amrashSidebarLinkBound = "1";
+
+    link.addEventListener("click", () => {
+      if (window.innerWidth <= 991) {
+        closeSidebar();
       }
-
-      link.dataset.amrashSidebarLinkBound = "1";
-
-      link.addEventListener("click", () => {
-        if (
-          window.innerWidth <= 991
-        ) {
-          closeSidebar();
-        }
-      });
     });
+  });
 }
 
 
