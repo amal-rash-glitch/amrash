@@ -1619,3 +1619,197 @@ textarea {
     content: "";
   }
 }
+
+/* =========================================================
+   AMRASH — ARABIC DATE PICKER
+========================================================= */
+
+/* حاوية حقل التاريخ */
+.amrash-date-field {
+  position: relative;
+}
+
+/* التقويم */
+.amrash-date-picker {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1080;
+
+  width: 320px;
+  max-width: calc(100vw - 30px);
+
+  margin-top: 6px;
+  padding: 16px;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
+
+  direction: rtl;
+}
+
+/* رأس التقويم */
+.amrash-date-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 14px;
+}
+
+/* اسم الشهر والسنة */
+.amrash-date-header strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* أزرار الشهر السابق / التالي */
+.amrash-date-header button {
+  width: 34px;
+  height: 34px;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: #f3f7fb;
+
+  color: #374151;
+
+  font-size: 22px;
+  line-height: 1;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.amrash-date-header button:hover {
+  background: #e7f1f8;
+}
+
+.amrash-date-header button:active {
+  transform: scale(0.95);
+}
+
+/* أيام الأسبوع + أيام الشهر */
+.amrash-weekdays,
+.amrash-calendar-days {
+  display: grid;
+
+  grid-template-columns:
+    repeat(7, minmax(0, 1fr));
+
+  gap: 5px;
+
+  text-align: center;
+}
+
+/* أسماء أيام الأسبوع */
+.amrash-weekdays {
+  margin-bottom: 7px;
+}
+
+/* اسم اليوم */
+.amrash-weekdays span {
+  font-size: 11px;
+  font-weight: 600;
+
+  color: #6b7280;
+
+  white-space: nowrap;
+}
+
+/* أرقام الأيام */
+.amrash-calendar-days button {
+  width: 100%;
+  aspect-ratio: 1;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: transparent;
+
+  color: #374151;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+/* عند تمرير الماوس */
+.amrash-calendar-days button:hover {
+  background: #eef6fc;
+}
+
+/* عند الضغط */
+.amrash-calendar-days button:active {
+  transform: scale(0.94);
+}
+
+/* تاريخ اليوم */
+.amrash-calendar-days button.today {
+  border: 1px solid #7fb3d5;
+}
+
+/* التاريخ المحدد */
+.amrash-calendar-days button.selected {
+  background: #6fa8dc;
+  color: #ffffff;
+}
+
+/* الأيام الفارغة قبل بداية الشهر */
+.amrash-calendar-days button.empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* =========================================================
+   AMRASH — ARABIC DATE PICKER MOBILE
+========================================================= */
+
+@media (max-width: 576px) {
+
+  .amrash-date-picker {
+    right: 0;
+    left: 0;
+
+    width: 100%;
+    max-width: 100%;
+
+    padding: 14px;
+  }
+
+  .amrash-weekdays,
+  .amrash-calendar-days {
+    gap: 4px;
+  }
+
+  .amrash-weekdays span {
+    font-size: 10px;
+  }
+
+  .amrash-calendar-days button {
+    font-size: 12px;
+  }
+
+  .amrash-date-header strong {
+    font-size: 14px;
+  }
+
+}

@@ -3715,6 +3715,325 @@ async function saveService() {
 
 
 /* =========================================================
+ARABIC DATE PICKER
+========================================================= */
+
+let arabicDatePickerMonth = new Date();
+
+const arabicMonths = [
+  "يناير",
+  "فبراير",
+  "مارس",
+  "أبريل",
+  "مايو",
+  "يونيو",
+  "يوليو",
+  "أغسطس",
+  "سبتمبر",
+  "أكتوبر",
+  "نوفمبر",
+  "ديسمبر"
+];
+
+function formatArabicDate(dateString) {
+  if (!dateString) {
+    return "";
+  }
+
+  const parts = String(dateString).split("-");
+
+  if (parts.length !== 3) {
+    return "";
+  }
+
+  const year = Number(parts[0]);
+  const month = Number(parts[1]) - 1;
+  const day = Number(parts[2]);
+
+  if (
+    !year ||
+    month < 0 ||
+    month > 11 ||
+    !day
+  ) {
+    return "";
+  }
+
+  return `${day} ${arabicMonths[month]} ${year}`;
+}
+
+function getDatePickerValue(date) {
+  const year = date.getFullYear();
+
+  const month =
+    String(date.getMonth() + 1).padStart(2, "0");
+
+  const day =
+    String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function renderArabicDatePicker() {
+  const title =
+    document.getElementById(
+      "dateMonthTitle"
+    );
+
+  const daysContainer =
+    document.getElementById(
+      "dateCalendarDays"
+    );
+
+  if (!title || !daysContainer) {
+    return;
+  }
+
+  const year =
+    arabicDatePickerMonth.getFullYear();
+
+  const month =
+    arabicDatePickerMonth.getMonth();
+
+  title.textContent =
+    `${arabicMonths[month]} ${year}`;
+
+  daysContainer.innerHTML = "";
+
+  const firstDay =
+    new Date(year, month, 1).getDay();
+
+  const daysInMonth =
+    new Date(
+      year,
+      month + 1,
+      0
+    ).getDate();
+
+  for (
+    let i = 0;
+    i < firstDay;
+    i++
+  ) {
+    const empty =
+      document.createElement("button");
+
+    empty.type = "button";
+    empty.className = "empty";
+
+    daysContainer.appendChild(empty);
+  }
+
+  const selectedValue =
+    document.getElementById(
+      "aDate"
+    )?.value || "";
+
+  const today =
+    getDatePickerValue(
+      new Date()
+    );
+
+  for (
+    let day = 1;
+    day <= daysInMonth;
+    day++
+  ) {
+    const button =
+      document.createElement("button");
+
+    button.type = "button";
+    button.textContent = day;
+
+    const currentDate =
+      new Date(
+        year,
+        month,
+        day
+      );
+
+    const value =
+      getDatePickerValue(
+        currentDate
+      );
+
+    if (value === today) {
+      button.classList.add(
+        "today"
+      );
+    }
+
+    if (value === selectedValue) {
+      button.classList.add(
+        "selected"
+      );
+    }
+
+    button.addEventListener(
+      "click",
+      () => {
+        const hidden =
+          document.getElementById(
+            "aDate"
+          );
+
+        const display =
+          document.getElementById(
+            "aDateDisplay"
+          );
+
+        if (hidden) {
+          hidden.value = value;
+        }
+
+        if (display) {
+          display.value =
+            formatArabicDate(
+              value
+            );
+        }
+
+        const picker =
+          document.getElementById(
+            "arabicDatePicker"
+          );
+
+        if (picker) {
+          picker.hidden = true;
+        }
+
+        renderArabicDatePicker();
+      }
+    );
+
+    daysContainer.appendChild(
+      button
+    );
+  }
+}
+
+function initArabicDatePicker() {
+  const display =
+    document.getElementById(
+      "aDateDisplay"
+    );
+
+  const picker =
+    document.getElementById(
+      "arabicDatePicker"
+    );
+
+  const previous =
+    document.getElementById(
+      "datePrevMonth"
+    );
+
+  const next =
+    document.getElementById(
+      "dateNextMonth"
+    );
+
+  if (
+    !display ||
+    !picker ||
+    !previous ||
+    !next
+  ) {
+    return;
+  }
+
+  if (
+    display.dataset
+      .arabicDatePickerBound
+  ) {
+    return;
+  }
+
+  display.dataset
+    .arabicDatePickerBound = "1";
+
+  display.addEventListener(
+    "click",
+    () => {
+      const current =
+        document.getElementById(
+          "aDate"
+        )?.value;
+
+      if (current) {
+        const parts =
+          current.split("-");
+
+        if (parts.length === 3) {
+          arabicDatePickerMonth =
+            new Date(
+              Number(parts[0]),
+              Number(parts[1]) - 1,
+              1
+            );
+        }
+      } else {
+        arabicDatePickerMonth =
+          new Date();
+      }
+
+      picker.hidden =
+        !picker.hidden;
+
+      if (!picker.hidden) {
+        renderArabicDatePicker();
+      }
+    }
+  );
+
+  previous.addEventListener(
+    "click",
+    () => {
+      arabicDatePickerMonth =
+        new Date(
+          arabicDatePickerMonth.getFullYear(),
+          arabicDatePickerMonth.getMonth() - 1,
+          1
+        );
+
+      renderArabicDatePicker();
+    }
+  );
+
+  next.addEventListener(
+    "click",
+    () => {
+      arabicDatePickerMonth =
+        new Date(
+          arabicDatePickerMonth.getFullYear(),
+          arabicDatePickerMonth.getMonth() + 1,
+          1
+        );
+
+      renderArabicDatePicker();
+    }
+  );
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (
+        event.target.closest(
+          "#aDateDisplay"
+        ) ||
+        event.target.closest(
+          "#arabicDatePicker"
+        )
+      ) {
+        return;
+      }
+
+      picker.hidden = true;
+    }
+  );
+}
+
+/* =========================================================
 18. APPOINTMENTS
 ========================================================= */
 
@@ -4110,7 +4429,8 @@ function updateAppointmentStats() {
 function openAppointmentForm(appointment = null) {
   editingAppointmentId = appointment?.id || null;
 
-  Helpers.setValue("appointmentId", appointment?.id || "");
+  // معرّف الموعد
+  Helpers.setValue("apptId", appointment?.id || "");
 
   // اسم المريض
   Helpers.setValue(
@@ -4136,43 +4456,57 @@ function openAppointmentForm(appointment = null) {
     appointment?.patient_id || appointment?.patient?.id || "",
   );
 
+  // الطبيب
   Helpers.setValue(
     "aDoctor",
     appointment?.doctor_id || appointment?.doctor?.id || "",
   );
 
+  // القسم
   Helpers.setValue(
     "aDepartment",
     appointment?.department_id || appointment?.department?.id || "",
   );
 
+  // الخدمة
   Helpers.setValue(
     "aService",
     appointment?.service_id || appointment?.service?.id || "",
   );
 
+  // نوع الموعد
   Helpers.setValue("aType", appointment?.type || "");
 
-  Helpers.setValue(
-    "aDate",
-    appointment?.appointment_date || appointment?.date || "",
-  );
+  // التاريخ
+  const appointmentDate =
+    appointment?.appointment_date || appointment?.date || "";
 
+  const cleanAppointmentDate = String(appointmentDate).slice(0, 10);
+
+  Helpers.setValue("aDate", cleanAppointmentDate);
+
+  Helpers.setValue("aDateDisplay", formatArabicDate(cleanAppointmentDate));
+
+  // الوقت
   Helpers.setValue(
     "aTime",
     appointment?.appointment_time || appointment?.time || "",
   );
 
+  // الحالة
   Helpers.setValue("aStatus", appointment?.status || "pending");
 
+  // الملاحظات
   Helpers.setValue("aNotes", appointment?.notes || "");
 
+  // عنوان النافذة
   const title = document.getElementById("appointmentModalTitle");
 
   if (title) {
     title.textContent = appointment ? "تعديل الموعد" : "إضافة موعد جديد";
   }
 
+  // فتح نافذة الموعد
   showModal("appointmentModal");
 }
 
@@ -8039,6 +8373,7 @@ async function initAmRash() {
   initProfileLinks();
   initCurrentDate();
   initNotifications();
+  initArabicDatePicker();
 
   initPageEvents();
   initFilters();

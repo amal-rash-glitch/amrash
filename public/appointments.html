@@ -252,10 +252,66 @@
               <select class="form-select" id="aService"></select>
             </div>
 
-            <div class="col-md-4">
-              <label class="form-label">التاريخ *</label>
-              <input type="date" class="form-control" id="aDate" required>
-            </div>
+         <div class="col-md-4 amrash-date-field">
+  <label class="form-label">التاريخ *</label>
+
+  <input
+    type="text"
+    class="form-control"
+    id="aDateDisplay"
+    placeholder="اختر التاريخ"
+    autocomplete="off"
+    readonly
+    required
+  >
+
+  <input
+    type="hidden"
+    id="aDate"
+    name="appointment_date"
+  >
+
+  <div
+    id="arabicDatePicker"
+    class="amrash-date-picker"
+    hidden
+  >
+    <div class="amrash-date-header">
+      <button
+        type="button"
+        id="datePrevMonth"
+        class="btn btn-sm"
+      >
+        ‹
+      </button>
+
+      <strong id="dateMonthTitle"></strong>
+
+      <button
+        type="button"
+        id="dateNextMonth"
+        class="btn btn-sm"
+      >
+        ›
+      </button>
+    </div>
+
+    <div class="amrash-weekdays">
+      <span>الأحد</span>
+      <span>الإثنين</span>
+      <span>الثلاثاء</span>
+      <span>الأربعاء</span>
+      <span>الخميس</span>
+      <span>الجمعة</span>
+      <span>السبت</span>
+    </div>
+
+    <div
+      id="dateCalendarDays"
+      class="amrash-calendar-days"
+    ></div>
+  </div>
+</div>
 
             <div class="col-md-4">
               <label class="form-label">الوقت *</label>
