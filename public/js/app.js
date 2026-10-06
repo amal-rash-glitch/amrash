@@ -452,9 +452,37 @@ const Helpers = {
 
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
+
     const day = String(date.getDate()).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
+  },
+
+  normalizeDate(value) {
+    if (!value) {
+      return "";
+    }
+
+    const text = String(value).trim();
+
+    if (!text) {
+      return "";
+    }
+
+    /*
+     * إذا كان التاريخ قادمًا من MySQL
+     * بصيغة:
+     * 2026-10-06T00:00:00.000Z
+     *
+     * نأخذ جزء التاريخ فقط.
+     */
+    const match = text.match(/^(\d{4}-\d{2}-\d{2})/);
+
+    if (match) {
+      return match[1];
+    }
+
+    return text;
   },
 
   formatDate(value) {
@@ -471,7 +499,7 @@ const Helpers = {
     return date.toLocaleDateString("ar-EG", {
       year: "numeric",
       month: "2-digit",
-      day: "2-digit"
+      day: "2-digit",
     });
   },
 
@@ -516,15 +544,11 @@ const Helpers = {
 
     let age = now.getFullYear() - birth.getFullYear();
 
-    const monthDifference =
-      now.getMonth() - birth.getMonth();
+    const monthDifference = now.getMonth() - birth.getMonth();
 
     if (
       monthDifference < 0 ||
-      (
-        monthDifference === 0 &&
-        now.getDate() < birth.getDate()
-      )
+      (monthDifference === 0 && now.getDate() < birth.getDate())
     ) {
       age--;
     }
@@ -537,7 +561,7 @@ const Helpers = {
 
     return number.toLocaleString("ar-EG", {
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     });
   },
 
@@ -562,9 +586,7 @@ const Helpers = {
   },
 
   getQuery(name) {
-    return new URLSearchParams(
-      window.location.search
-    ).get(name);
+    return new URLSearchParams(window.location.search).get(name);
   },
 
   paginate(items, page = 1, perPage = 10) {
@@ -578,7 +600,7 @@ const Helpers = {
       page: currentPage,
       perPage: limit,
       total: items.length,
-      pages: Math.max(1, Math.ceil(items.length / limit))
+      pages: Math.max(1, Math.ceil(items.length / limit)),
     };
   },
 
@@ -605,7 +627,7 @@ const Helpers = {
       leave: "إجازة",
       on_leave: "إجازة",
       male: "ذكر",
-      female: "أنثى"
+      female: "أنثى",
     };
 
     return map[normalized] || value || "—";
@@ -617,30 +639,22 @@ const Helpers = {
     let cls = "secondary";
 
     if (
-      ["active", "confirmed", "completed", "available"].includes(
-        normalized
-      )
+      ["active", "confirmed", "completed", "available"].includes(normalized)
     ) {
       cls = "success";
     }
 
-    if (
-      ["pending", "scheduled"].includes(normalized)
-    ) {
+    if (["pending", "scheduled"].includes(normalized)) {
       cls = "warning";
     }
 
     if (
-      ["inactive", "cancelled", "canceled", "unavailable"].includes(
-        normalized
-      )
+      ["inactive", "cancelled", "canceled", "unavailable"].includes(normalized)
     ) {
       cls = "danger";
     }
 
-    if (
-      ["leave", "on_leave"].includes(normalized)
-    ) {
+    if (["leave", "on_leave"].includes(normalized)) {
       cls = "info";
     }
 
@@ -649,7 +663,7 @@ const Helpers = {
         ${this.escapeHTML(this.statusText(value))}
       </span>
     `;
-  }
+  },
 };
 
 
@@ -4171,10 +4185,9 @@ function renderAppointments() {
             ""
           );
 
-        const appointmentDate =
-          appointment.appointment_date ||
-          appointment.date ||
-          "";
+        const appointmentDate = Helpers.normalizeDate(
+          appointment.appointment_date || appointment.date || "",
+        );
 
         const appointmentStatus =
           Helpers.normalize(
@@ -4226,15 +4239,16 @@ function renderAppointments() {
           !type ||
           appointmentType === type;
 
-        const dateMatch =
-          !date ||
-          appointmentDate === date;
+          const dateMatch =
+            !date || Helpers.normalizeDate(date) === appointmentDate;
 
         let tabMatch = true;
 
-        if (activeTab === "today") {
-          tabMatch =
-            appointmentDate === today;
+       if (activeTab === "today") {
+  tabMatch =
+    appointmentDate ===
+    Helpers.normalizeDate(today);
+
         } else if (
           activeTab === "pending"
         ) {
@@ -4386,43 +4400,30 @@ function renderAppointments() {
 }
 
 function updateAppointmentStats() {
-  const today =
-    Helpers.today();
+  const today = Helpers.normalizeDate(Helpers.today());
 
-  Helpers.setText(
-    "appointmentTotal",
-    appointmentsData.length
-  );
+  Helpers.setText("appointmentTotal", appointmentsData.length);
 
   Helpers.setText(
     "appointmentToday",
     appointmentsData.filter(
       (item) =>
-        (
-          item.appointment_date ||
-          item.date
-        ) === today
-    ).length
+        Helpers.normalizeDate(item.appointment_date || item.date) === today,
+    ).length,
   );
 
   Helpers.setText(
     "appointmentPending",
     appointmentsData.filter(
-      (item) =>
-        Helpers.normalize(
-          item.status
-        ) === "pending"
-    ).length
+      (item) => Helpers.normalize(item.status) === "pending",
+    ).length,
   );
 
   Helpers.setText(
     "appointmentCompleted",
     appointmentsData.filter(
-      (item) =>
-        Helpers.normalize(
-          item.status
-        ) === "completed"
-    ).length
+      (item) => Helpers.normalize(item.status) === "completed",
+    ).length,
   );
 }
 
@@ -4645,6 +4646,211 @@ async function saveAppointment() {
 
     Toast.error(error.message || "تعذر حفظ الموعد.");
   }
+}
+
+/* =========================================================
+   APPOINTMENT DETAILS
+========================================================= */
+
+function viewAppointment(appointmentId) {
+  if (!appointmentId) {
+    return;
+  }
+
+  const appointment =
+    appointmentsData.find(
+      (item) =>
+        String(item.id) ===
+        String(appointmentId)
+    );
+
+  if (!appointment) {
+    Toast.error(
+      "تعذر العثور على بيانات الموعد."
+    );
+
+    return;
+  }
+
+  const patientName =
+    appointment.patient_name ||
+    appointment.patient?.name ||
+    appointment.name ||
+    "—";
+
+  const phone =
+    appointment.patient_phone ||
+    appointment.patient?.phone ||
+    appointment.phone ||
+    "—";
+
+  const fileNumber =
+    appointment.file_number ||
+    appointment.patient_file_number ||
+    appointment.patient?.file_number ||
+    "—";
+
+  const doctorName =
+    appointment.doctor_name ||
+    appointment.doctor?.name ||
+    "—";
+
+  const departmentName =
+    appointment.department_name ||
+    appointment.department?.name ||
+    "—";
+
+  const serviceName =
+    appointment.service_name ||
+    appointment.service?.name ||
+    "—";
+
+  const date =
+    appointment.appointment_date ||
+    appointment.date ||
+    "";
+
+  const time =
+    appointment.appointment_time ||
+    appointment.time ||
+    "";
+
+  const type =
+    appointment.type ||
+    "—";
+
+  const notes =
+    appointment.notes ||
+    "لا توجد ملاحظات.";
+
+  const number =
+    appointment.id ||
+    "—";
+
+  const status =
+    appointment.status ||
+    "pending";
+
+  Helpers.setValue(
+    "appointmentDetailsNumber",
+    `رقم الموعد: ${number}`
+  );
+
+  Helpers.setValue(
+    "appointmentDetailsPatient",
+    patientName
+  );
+
+  Helpers.setValue(
+    "appointmentDetailsPhone",
+    phone
+  );
+
+  Helpers.setValue(
+    "appointmentDetailsFileNumber",
+    fileNumber
+  );
+
+  Helpers.setValue(
+    "appointmentDetailsDoctor",
+    doctorName
+  );
+
+  Helpers.setValue(
+    "appointmentDetailsDepartment",
+    departmentName
+  );
+
+  Helpers.setValue(
+    "appointmentDetailsService",
+    serviceName
+  );
+
+  Helpers.setValue(
+    "appointmentDetailsDate",
+    date
+      ? Helpers.formatDate(date)
+      : "—"
+  );
+
+  Helpers.setValue(
+    "appointmentDetailsTime",
+    time
+      ? Helpers.formatTime(time)
+      : "—"
+  );
+
+  Helpers.setValue(
+    "appointmentDetailsType",
+    type
+  );
+
+  Helpers.setValue(
+    "appointmentDetailsNotes",
+    notes
+  );
+
+  const statusElement =
+    document.getElementById(
+      "appointmentDetailsStatus"
+    );
+
+  if (statusElement) {
+    statusElement.innerHTML =
+      Helpers.badge(status);
+  }
+
+  showModal(
+    "appointmentDetailsModal"
+  );
+}
+
+/* =========================================================
+   APPOINTMENT VIEW BUTTON
+========================================================= */
+
+function initAppointmentViewButtons() {
+  const table =
+    document.getElementById(
+      "appointmentsTableBody"
+    );
+
+  if (!table) {
+    return;
+  }
+
+  if (
+    table.dataset
+      .viewButtonsBound
+  ) {
+    return;
+  }
+
+  table.dataset
+    .viewButtonsBound = "1";
+
+  table.addEventListener(
+    "click",
+    (event) => {
+      const button =
+        event.target.closest(
+          "[data-view-appointment]"
+        );
+
+      if (!button) {
+        return;
+      }
+
+      const appointmentId =
+        button.getAttribute(
+          "data-view-appointment"
+        );
+
+      viewAppointment(
+        appointmentId
+      );
+    }
+  );
 }
 
 
@@ -8374,6 +8580,8 @@ async function initAmRash() {
   initCurrentDate();
   initNotifications();
   initArabicDatePicker();
+  initAppointmentViewButtons();
+
 
   initPageEvents();
   initFilters();
