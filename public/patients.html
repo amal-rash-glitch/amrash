@@ -147,33 +147,42 @@
 </div>
 
 <!-- ============ نافذة إضافة/تعديل مريض ============ -->
-<div class="modal fade" id="patientModal" tabindex="-1">
+<div class="modal fade" id="patientModal" tabindex="-1" aria-labelledby="patientModalTitle" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
+
       <div class="modal-header">
         <h5 class="modal-title" id="patientModalTitle">إضافة مريض جديد</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
       </div>
+
       <form id="patientForm">
+
         <div class="modal-body">
           <input type="hidden" id="patientId">
+
           <div class="row g-3">
+
             <div class="col-md-6">
               <label class="form-label">الاسم الكامل *</label>
               <input type="text" class="form-control" id="pName" required>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">رقم الهاتف *</label>
               <input type="tel" class="form-control" id="pPhone" required>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">البريد الإلكتروني</label>
               <input type="email" class="form-control" id="pEmail">
             </div>
+
             <div class="col-md-3">
               <label class="form-label">تاريخ الميلاد</label>
               <input type="date" class="form-control" id="pDob">
             </div>
+
             <div class="col-md-3">
               <label class="form-label">النوع</label>
               <select class="form-select" id="pGender">
@@ -181,34 +190,47 @@
                 <option value="أنثى">أنثى</option>
               </select>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">القسم</label>
               <select class="form-select" id="pDepartment"></select>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">فصيلة الدم</label>
               <select class="form-select" id="pBlood">
                 <option value="">غير محدد</option>
-                <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
-                <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
               </select>
             </div>
+
             <div class="col-12">
               <label class="form-label">العنوان</label>
               <input type="text" class="form-control" id="pAddress">
             </div>
+
             <div class="col-md-6">
               <label class="form-label">الأمراض المزمنة</label>
               <input type="text" class="form-control" id="pChronic" placeholder="مثال: ضغط، سكري">
             </div>
+
             <div class="col-md-6">
               <label class="form-label">الحساسية</label>
               <input type="text" class="form-control" id="pAllergies">
             </div>
+
             <div class="col-md-6">
               <label class="form-label">جهة الاتصال في الطوارئ</label>
               <input type="text" class="form-control" id="pEmergency">
             </div>
+
             <div class="col-md-6">
               <label class="form-label">الحالة</label>
               <select class="form-select" id="pStatus">
@@ -216,17 +238,28 @@
                 <option value="inactive">غير نشط</option>
               </select>
             </div>
+
             <div class="col-12">
               <label class="form-label">ملاحظات</label>
               <textarea class="form-control" id="pNotes" rows="2"></textarea>
             </div>
+
           </div>
         </div>
+
         <div class="modal-footer">
-          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">
+            إلغاء
+          </button>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>
+            حفظ
+          </button>
         </div>
+
       </form>
+
     </div>
   </div>
 </div>
@@ -269,7 +302,7 @@
 
 
 <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
-<script src="JS/app.js"></script>
+<script src="js/app.js"></script>
 
 </body>
 </html>

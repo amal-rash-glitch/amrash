@@ -1,384 +1,2120 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>AmRash | الإعدادات</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css"
+  >
+
+  <!-- Bootstrap Icons -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+  >
+
+  <!-- Tajawal -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+    rel="stylesheet"
+  >
+
+  <!-- AmRash Style -->
   <link rel="stylesheet" href="css/style.css">
+
+  <!-- Print -->
   <link rel="stylesheet" href="css/print.css" media="print">
+
+  <style>
+    /* =====================================================
+       SETTINGS PAGE
+    ===================================================== */
+
+    .settings-pane {
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .settings-nav-card {
+      position: sticky;
+      top: 20px;
+    }
+
+    #settingsNav .list-group-item {
+      border: 0;
+      border-radius: 10px !important;
+      margin-bottom: 5px;
+      padding: 13px 15px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    #settingsNav .list-group-item:hover {
+      transform: translateX(-2px);
+      background: rgba(13, 110, 253, 0.06);
+    }
+
+    #settingsNav .list-group-item.active {
+      background: var(--brand-primary, #0d6efd);
+      color: #fff;
+    }
+
+    .settings-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 8px;
+      background: rgba(13, 110, 253, 0.08);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .card-head h3 {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* =====================================================
+       PASSWORD
+    ===================================================== */
+
+    .password-section {
+      margin-top: 28px;
+      padding: 22px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 16px;
+      background: #fafcff;
+    }
+
+    .password-section-title {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .password-section-title > i {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(13, 110, 253, 0.1);
+      color: var(--brand-primary, #0d6efd);
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .password-section-title h6 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .password-section-title p {
+      margin: 0;
+      color: #6c757d;
+      font-size: 13px;
+    }
+
+    .password-input {
+      position: relative;
+    }
+
+    .password-input .form-control {
+      padding-left: 45px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 0;
+      background: transparent;
+      color: #6c757d;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .password-toggle:hover {
+      background: rgba(13, 110, 253, 0.08);
+      color: var(--brand-primary, #0d6efd);
+    }
+
+    .password-hint {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 13px;
+      border-radius: 10px;
+      background: rgba(13, 110, 253, 0.06);
+      color: #59636e;
+      font-size: 13px;
+    }
+
+    /* =====================================================
+       ADMIN AVATAR
+    ===================================================== */
+
+    .admin-avatar {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--brand-primary, #0d6efd);
+      color: #fff;
+      font-size: 26px;
+      font-weight: 700;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .admin-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .admin-user-info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* =====================================================
+       EMPTY TABLE
+    ===================================================== */
+
+    .empty-table {
+      text-align: center;
+      padding: 35px 15px !important;
+      color: #8a939c;
+    }
+
+    .empty-table i {
+      display: block;
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    /* =====================================================
+       BACKUP
+    ===================================================== */
+
+    .backup-info {
+      padding: 18px;
+      border-radius: 14px;
+      background: rgba(13, 110, 253, 0.05);
+      border: 1px solid rgba(13, 110, 253, 0.08);
+      margin-bottom: 20px;
+    }
+
+    .backup-info i {
+      font-size: 28px;
+      color: var(--brand-primary, #0d6efd);
+    }
+
+    /* =====================================================
+       RESPONSIVE
+    ===================================================== */
+
+    @media (max-width: 991px) {
+      .settings-nav-card {
+        position: static;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .password-section {
+        padding: 16px;
+      }
+
+      .page-head {
+        align-items: flex-start;
+      }
+
+      .page-head .btn {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
+
 <body>
 
 <div class="app-layout">
+
+  <!-- =====================================================
+       SIDEBAR
+  ===================================================== -->
+
   <aside class="sidebar" id="sidebar">
+
     <div class="sidebar-brand">
-      <div class="logo-box"><i class="bi bi-hospital"></i></div>
+      <div class="logo-box">
+        <i class="bi bi-hospital"></i>
+      </div>
+
       <span class="name">AmRash</span>
     </div>
+
     <nav class="sidebar-nav">
-      <div class="nav-section-title">الرئيسية</div>
-      <a href="dashboard.html" class="nav-link"><i class="bi bi-grid-1x2-fill"></i> لوحة التحكم</a>
-      <a href="appointments.html" class="nav-link"><i class="bi bi-calendar-check"></i> المواعيد</a>
-      <div class="nav-section-title">الإدارة الطبية</div>
-      <a href="patients.html" class="nav-link"><i class="bi bi-people"></i> المرضى</a>
-      <a href="doctors.html" class="nav-link"><i class="bi bi-person-badge"></i> الأطباء</a>
-      <a href="departments.html" class="nav-link"><i class="bi bi-diagram-3"></i> الأقسام</a>
-      <a href="services.html" class="nav-link"><i class="bi bi-clipboard2-pulse"></i> الخدمات الطبية</a>
-      <div class="nav-section-title">النظام</div>
-      <a href="reports.html" class="nav-link"><i class="bi bi-bar-chart-line"></i> التقارير</a>
-      <a href="settings.html" class="nav-link active"><i class="bi bi-gear"></i> الإعدادات</a>
+
+      <div class="nav-section-title">
+        الرئيسية
+      </div>
+
+      <a href="dashboard.html" class="nav-link">
+        <i class="bi bi-grid-1x2-fill"></i>
+        لوحة التحكم
+      </a>
+
+      <a href="appointments.html" class="nav-link">
+        <i class="bi bi-calendar-check"></i>
+        المواعيد
+      </a>
+
+
+      <div class="nav-section-title">
+        الإدارة الطبية
+      </div>
+
+      <a href="patients.html" class="nav-link">
+        <i class="bi bi-people"></i>
+        المرضى
+      </a>
+
+      <a href="doctors.html" class="nav-link">
+        <i class="bi bi-person-badge"></i>
+        الأطباء
+      </a>
+
+      <a href="departments.html" class="nav-link">
+        <i class="bi bi-diagram-3"></i>
+        الأقسام
+      </a>
+
+      <a href="services.html" class="nav-link">
+        <i class="bi bi-clipboard2-pulse"></i>
+        الخدمات الطبية
+      </a>
+
+
+      <div class="nav-section-title">
+        النظام
+      </div>
+
+      <a href="reports.html" class="nav-link">
+        <i class="bi bi-bar-chart-line"></i>
+        التقارير
+      </a>
+
+      <a href="settings.html" class="nav-link active">
+        <i class="bi bi-gear"></i>
+        الإعدادات
+      </a>
+
     </nav>
+
+
     <div class="sidebar-footer">
-      <a href="#" class="nav-link" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> تسجيل الخروج</a>
+
+      <a href="#" class="nav-link" id="logoutBtn">
+        <i class="bi bi-box-arrow-right"></i>
+        تسجيل الخروج
+      </a>
+
     </div>
+
   </aside>
+
+
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
+
+  <!-- =====================================================
+       MAIN AREA
+  ===================================================== -->
+
   <div class="main-area">
+
+    <!-- ===================================================
+         TOPBAR
+    =================================================== -->
+
     <header class="topbar">
-      <button class="btn-mobile-toggle" id="mobileToggle"><i class="bi bi-list"></i></button>
-      <h1 class="page-title">الإعدادات</h1>
+
+      <button
+        class="btn-mobile-toggle"
+        id="mobileToggle"
+        type="button"
+      >
+        <i class="bi bi-list"></i>
+      </button>
+
+
+      <h1 class="page-title">
+        الإعدادات
+      </h1>
+
+
       <div class="topbar-right">
-        <button class="icon-btn" data-bs-toggle="dropdown"><i class="bi bi-bell"></i><span class="badge-dot"></span></button>
-        <ul class="dropdown-menu dropdown-menu-end shadow">
-          <li><h6 class="dropdown-header">الإشعارات</h6></li>
-          <li><a class="dropdown-item" href="#">تم حفظ الإعدادات بنجاح</a></li>
-        </ul>
+
+        <!-- Notifications -->
+
         <div class="dropdown">
-          <div class="user-chip" data-bs-toggle="dropdown">
-            <div class="avatar" id="userAvatar">أ</div>
-            <div><div class="u-name" id="userName">أحمد رشاد</div><div class="u-role" id="userRole">مدير النظام</div></div>
-          </div>
+
+          <button
+            class="icon-btn"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <i class="bi bi-bell"></i>
+            <span class="badge-dot"></span>
+          </button>
+
           <ul class="dropdown-menu dropdown-menu-end shadow">
-            <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i> ملفي الشخصي</a></li>
-            <li><a class="dropdown-item" href="settings.html"><i class="bi bi-gear me-2"></i> الإعدادات</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="#" id="logoutBtn2"><i class="bi bi-box-arrow-right me-2"></i> تسجيل الخروج</a></li>
+
+            <li>
+              <h6 class="dropdown-header">
+                الإشعارات
+              </h6>
+            </li>
+
+            <li>
+              <div class="dropdown-item text-muted">
+                لا توجد إشعارات جديدة
+              </div>
+            </li>
+
           </ul>
+
         </div>
+
+
+        <!-- User -->
+
+        <div class="dropdown">
+
+          <div
+            class="user-chip"
+            data-bs-toggle="dropdown"
+            role="button"
+          >
+
+            <div
+              class="avatar"
+              id="userAvatar"
+            >
+              أ
+            </div>
+
+            <div>
+
+              <div
+                class="u-name"
+                id="userName"
+              >
+                —
+              </div>
+
+              <div
+                class="u-role"
+                id="userRole"
+              >
+                —
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <ul class="dropdown-menu dropdown-menu-end shadow">
+
+            <li>
+              <a
+                class="dropdown-item"
+                href="profile.html"
+              >
+                <i class="bi bi-person me-2"></i>
+                ملفي الشخصي
+              </a>
+            </li>
+
+            <li>
+              <a
+                class="dropdown-item"
+                href="settings.html"
+              >
+                <i class="bi bi-gear me-2"></i>
+                الإعدادات
+              </a>
+            </li>
+
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+
+            <li>
+
+              <a
+                class="dropdown-item text-danger"
+                href="#"
+                id="logoutBtn2"
+              >
+                <i class="bi bi-box-arrow-right me-2"></i>
+                تسجيل الخروج
+              </a>
+
+            </li>
+
+          </ul>
+
+        </div>
+
       </div>
+
     </header>
+
+
+    <!-- ===================================================
+         PAGE CONTENT
+    =================================================== -->
 
     <main class="page-content">
 
       <div class="page-head">
+
         <div>
-          <h1>الإعدادات</h1>
-          <p>إعدادات المؤسسة والنظام والحسابات والصلاحيات</p>
+
+          <h1>
+            الإعدادات
+          </h1>
+
+          <p>
+            إعدادات المؤسسة والنظام والحسابات والصلاحيات
+          </p>
+
         </div>
-        <button class="btn btn-primary" id="saveAllSettings"><i class="bi bi-check-lg me-1"></i> حفظ كل الإعدادات</button>
+
+
+        <button
+          type="button"
+          class="btn btn-primary"
+          id="saveAllSettings"
+        >
+          <i class="bi bi-check-lg me-1"></i>
+          حفظ كل الإعدادات
+        </button>
+
       </div>
+
+
+      <!--
+        مهم:
+        لا توجد رسالة نجاح ثابتة هنا.
+        الرسائل تظهر فقط من JavaScript بعد نجاح الحفظ.
+      -->
 
       <div id="settingsAlert"></div>
 
+
       <div class="row g-3">
-        <!-- قائمة الإعدادات الجانبية -->
+
+        <!-- =================================================
+             SETTINGS NAVIGATION
+        ================================================== -->
+
         <div class="col-lg-3">
-          <div class="card-box">
-            <div class="list-group list-group-flush" id="settingsNav">
-              <button class="list-group-item list-group-item-action active" data-pane="org"><i class="bi bi-building me-2"></i> بيانات المؤسسة</button>
-              <button class="list-group-item list-group-item-action" data-pane="admin"><i class="bi bi-person-gear me-2"></i> بيانات المدير</button>
-              <button class="list-group-item list-group-item-action" data-pane="system"><i class="bi bi-sliders me-2"></i> إعدادات النظام</button>
-              <button class="list-group-item list-group-item-action" data-pane="appt"><i class="bi bi-calendar-check me-2"></i> إعدادات المواعيد</button>
-              <button class="list-group-item list-group-item-action" data-pane="users"><i class="bi bi-people me-2"></i> الحسابات والصلاحيات</button>
-              <button class="list-group-item list-group-item-action" data-pane="backup"><i class="bi bi-cloud-arrow-down me-2"></i> النسخ الاحتياطي</button>
+
+          <div class="card-box settings-nav-card">
+
+            <div
+              class="list-group list-group-flush"
+              id="settingsNav"
+            >
+
+              <button
+                type="button"
+                class="list-group-item list-group-item-action active"
+                data-pane="org"
+              >
+                <i class="bi bi-building me-2"></i>
+                بيانات المؤسسة
+              </button>
+
+
+              <button
+                type="button"
+                class="list-group-item list-group-item-action"
+                data-pane="admin"
+              >
+                <i class="bi bi-person-gear me-2"></i>
+                بيانات المدير
+              </button>
+
+
+              <button
+                type="button"
+                class="list-group-item list-group-item-action"
+                data-pane="system"
+              >
+                <i class="bi bi-sliders me-2"></i>
+                إعدادات النظام
+              </button>
+
+
+              <button
+                type="button"
+                class="list-group-item list-group-item-action"
+                data-pane="appt"
+              >
+                <i class="bi bi-calendar-check me-2"></i>
+                إعدادات المواعيد
+              </button>
+
+
+              <button
+                type="button"
+                class="list-group-item list-group-item-action"
+                data-pane="users"
+              >
+                <i class="bi bi-people me-2"></i>
+                الحسابات والصلاحيات
+              </button>
+
+
+              <button
+                type="button"
+                class="list-group-item list-group-item-action"
+                data-pane="backup"
+              >
+                <i class="bi bi-cloud-arrow-down me-2"></i>
+                النسخ الاحتياطي
+              </button>
+
             </div>
+
           </div>
+
         </div>
 
-        <!-- محتوى الإعدادات -->
+
+        <!-- =================================================
+             SETTINGS CONTENT
+        ================================================== -->
+
         <div class="col-lg-9">
 
-          <!-- 1) بيانات المؤسسة -->
-          <div class="card-box settings-pane" id="pane-org">
-            <div class="card-head"><h3><i class="bi bi-building text-primary me-2"></i> بيانات المؤسسة</h3></div>
-            <div class="card-body-p">
-              <form id="orgForm">
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label">اسم المركز / المؤسسة</label>
-                    <input type="text" class="form-control" id="orgName" value="مركز AmRash الطبي" required>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">رقم التسجيل الضريبي</label>
-                    <input type="text" class="form-control" id="orgTax">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">رقم الهاتف</label>
-                    <input type="tel" class="form-control" id="orgPhone" value="+20 100 000 0000">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">البريد الإلكتروني</label>
-                    <input type="email" class="form-control" id="orgEmail" value="info@amrash.com">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">الموقع الإلكتروني</label>
-                    <input type="text" class="form-control" id="orgWebsite" value="https://amrash.com">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">العملة</label>
-                    <select class="form-select" id="orgCurrency">
-                       <option value="ج.س">جنيه سوداني (ج.س)</option>
-                      <option value="ج.م">جنيه مصري (ج.م)</option>
-                      <option value="ر.س">ريال سعودي (ر.س)</option>
-                      <option value="USD">دولار أميركي (USD)</option>
-                      <option value="د.ك">دينار كويتي (د.ك)</option>
-                    </select>
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label">العنوان</label>
-                    <input type="text" class="form-control" id="orgAddress" value="القاهرة، مصر">
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label">نبذة عن المؤسسة</label>
-                    <textarea class="form-control" id="orgAbout" rows="3">مركز طبي متكامل يقدم خدمات تشخيصية وعلاجية في جميع التخصصات.</textarea>
-                  </div>
-                </div>
-                <div class="mt-3">
-                  <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> حفظ بيانات المؤسسة</button>
-                </div>
-              </form>
-            </div>
-          </div>
 
-          <!-- 2) بيانات المدير -->
-          <div class="card-box settings-pane d-none" id="pane-admin">
-            <div class="card-head"><h3><i class="bi bi-person-gear text-primary me-2"></i> بيانات المدير</h3></div>
-            <div class="card-body-p">
-              <form id="adminForm">
-                <div class="d-flex align-items-center gap-3 mb-4">
-                  <div style="width:64px;height:64px;font-size:26px;background:var(--brand-primary);color:#fff;border-radius:50%;display:grid;place-items:center;font-weight:700">أ</div>
-                  <button type="button" class="btn btn-sm btn-soft"><i class="bi bi-upload me-1"></i> تغيير الصورة</button>
-                </div>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label">الاسم الكامل</label>
-                    <input type="text" class="form-control" id="adminName" value="أحمد رشاد" required>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">المسمى الوظيفي</label>
-                    <input type="text" class="form-control" id="adminTitle" value="مدير النظام">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">البريد الإلكتروني</label>
-                    <input type="email" class="form-control" id="adminEmail" value="admin@amrash.com" required>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">رقم الهاتف</label>
-                    <input type="tel" class="form-control" id="adminPhone" value="+20 100 111 2233">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">كلمة المرور الحالية</label>
-                    <input type="password" class="form-control" id="adminOldPass" placeholder="••••••••">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">كلمة المرور الجديدة</label>
-                    <input type="password" class="form-control" id="adminNewPass" placeholder="••••••••">
-                  </div>
-                </div>
-                <div class="mt-3">
-                  <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> حفظ بيانات المدير</button>
-                </div>
-              </form>
-            </div>
-          </div>
+          <!-- =================================================
+               ORGANIZATION
+          ================================================== -->
 
-          <!-- 3) إعدادات النظام -->
-          <div class="card-box settings-pane d-none" id="pane-system">
-            <div class="card-head"><h3><i class="bi bi-sliders text-primary me-2"></i> إعدادات النظام</h3></div>
-            <div class="card-body-p">
-              <div class="row g-4">
-                <div class="col-md-6">
-                  <label class="form-label">لغة الواجهة</label>
-                  <select class="form-select" id="sysLang">
-                    <option value="ar" selected>العربية</option>
-                    <option value="en">English</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">المنطقة الزمنية</label>
-                  <select class="form-select" id="sysTimezone">
-                    <option value="Africa/Cairo">القاهرة (GMT+2)</option>
-                    <option value="Asia/Riyadh">الرياض (GMT+3)</option>
-                    <option value="Asia/Dubai">دبي (GMT+4)</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">تنسيق التاريخ</label>
-                  <select class="form-select" id="sysDateFormat">
-                    <option value="DD/MM/YYYY">يوم/شهر/سنة</option>
-                    <option value="YYYY-MM-DD">سنة-شهر-يوم</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">عدد السجلات في الصفحة</label>
-                  <select class="form-select" id="sysPerPage">
-                    <option value="10">10</option>
-                    <option value="25" selected>25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                  </select>
-                </div>
-                <div class="col-12">
-                  <hr>
-                  <h6 class="fw-bold mb-3">التنبيهات والواجهة</h6>
-                  <div class="form-check form-switch mb-2">
-                    <input class="form-check-input" type="checkbox" id="sysNotifEmail" checked>
-                    <label class="form-check-label" for="sysNotifEmail">إرسال إشعارات بالبريد الإلكتروني</label>
-                  </div>
-                  <div class="form-check form-switch mb-2">
-                    <input class="form-check-input" type="checkbox" id="sysSound" checked>
-                    <label class="form-check-label" for="sysSound">تنبيه صوتي عند حجز موعد</label>
-                  </div>
-                  <div class="form-check form-switch mb-2">
-                    <input class="form-check-input" type="checkbox" id="sysDark">
-                    <label class="form-check-label" for="sysDark">الوضع الليلي (تجريبي)</label>
-                  </div>
-                </div>
-              </div>
-              <div class="mt-3">
-                <button class="btn btn-primary" id="saveSystemBtn"><i class="bi bi-check-lg me-1"></i> حفظ إعدادات النظام</button>
-              </div>
-            </div>
-          </div>
+          <div
+            class="card-box settings-pane"
+            id="pane-org"
+          >
 
-          <!-- 4) إعدادات المواعيد -->
-          <div class="card-box settings-pane d-none" id="pane-appt">
-            <div class="card-head"><h3><i class="bi bi-calendar-check text-primary me-2"></i> إعدادات المواعيد</h3></div>
-            <div class="card-body-p">
-              <div class="row g-3">
-                <div class="col-md-4">
-                  <label class="form-label">مدة الموعد الافتراضية (دقيقة)</label>
-                  <input type="number" class="form-control" id="apptDuration" value="30" min="5" step="5">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">بداية ساعات العمل</label>
-                  <input type="time" class="form-control" id="apptStart" value="09:00">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">نهاية ساعات العمل</label>
-                  <input type="time" class="form-control" id="apptEnd" value="21:00">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">أقصى عدد مواعيد في اليوم للطبيب</label>
-                  <input type="number" class="form-control" id="apptMaxPerDoctor" value="20" min="1">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">مدة الإلغاء المسموح بها قبل الموعد (ساعة)</label>
-                  <input type="number" class="form-control" id="apptCancelWindow" value="2" min="0">
-                </div>
-                <div class="col-12">
-                  <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="apptAllowOverlap">
-                    <label class="form-check-label" for="apptAllowOverlap">السماح بتداخل المواعيد لنفس الطبيب</label>
-                  </div>
-                </div>
-              </div>
-              <div class="mt-3">
-                <button class="btn btn-primary" id="saveApptBtn"><i class="bi bi-check-lg me-1"></i> حفظ إعدادات المواعيد</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- 5) الحسابات والصلاحيات -->
-          <div class="card-box settings-pane d-none" id="pane-users">
             <div class="card-head">
-              <h3><i class="bi bi-people text-primary me-2"></i> الحسابات والصلاحيات</h3>
-              <button class="btn btn-sm btn-primary" id="addUserBtn" data-bs-toggle="modal" data-bs-target="#userModal">
-                <i class="bi bi-person-plus me-1"></i> إضافة مستخدم
-              </button>
+
+              <h3>
+                <i class="bi bi-building text-primary"></i>
+                بيانات المؤسسة
+              </h3>
+
             </div>
-            <div class="table-responsive">
-              <table class="table-box">
-                <thead>
-                  <tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>الحالة</th><th style="width:120px">إجراءات</th></tr>
-                </thead>
-                <tbody id="usersTableBody"></tbody>
-              </table>
+
+
+            <div class="card-body-p">
+
+              <form id="orgForm">
+
+                <div class="row g-3">
+
+                  <div class="col-md-6">
+
+                    <label
+                      class="form-label"
+                      for="orgName"
+                    >
+                      اسم المركز / المؤسسة
+                    </label>
+
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="orgName"
+                      value="AmRash"
+                      required
+                    >
+
+                  </div>
+
+
+                  <div class="col-md-6">
+
+                    <label
+                      class="form-label"
+                      for="orgTax"
+                    >
+                      رقم التسجيل الضريبي
+                    </label>
+
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="orgTax"
+                      placeholder="أدخل الرقم إن وجد"
+                    >
+
+                  </div>
+
+
+                  <div class="col-md-6">
+
+                    <label
+                      class="form-label"
+                      for="orgPhone"
+                    >
+                      رقم الهاتف
+                    </label>
+
+                    <input
+                      type="tel"
+                      class="form-control"
+                      id="orgPhone"
+                      placeholder="أدخل رقم الهاتف"
+                    >
+
+                  </div>
+
+
+                  <div class="col-md-6">
+
+                    <label
+                      class="form-label"
+                      for="orgEmail"
+                    >
+                      البريد الإلكتروني
+                    </label>
+
+                    <input
+                      type="email"
+                      class="form-control"
+                      id="orgEmail"
+                      placeholder="البريد الإلكتروني للمؤسسة"
+                    >
+
+                  </div>
+
+
+                  <div class="col-md-6">
+
+                    <label
+                      class="form-label"
+                      for="orgWebsite"
+                    >
+                      الموقع الإلكتروني
+                    </label>
+
+                    <input
+                      type="url"
+                      class="form-control"
+                      id="orgWebsite"
+                      placeholder="https://example.com"
+                    >
+
+                  </div>
+
+
+                  <div class="col-md-6">
+
+                    <label
+                      class="form-label"
+                      for="orgCurrency"
+                    >
+                      العملة
+                    </label>
+
+                    <select
+                      class="form-select"
+                      id="orgCurrency"
+                    >
+
+                      <option value="ج.س" selected>
+                        جنيه سوداني (ج.س)
+                      </option>
+
+                      <option value="ج.م">
+                        جنيه مصري (ج.م)
+                      </option>
+
+                      <option value="ر.س">
+                        ريال سعودي (ر.س)
+                      </option>
+
+                      <option value="USD">
+                        دولار أميركي (USD)
+                      </option>
+
+                      <option value="د.ك">
+                        دينار كويتي (د.ك)
+                      </option>
+
+                    </select>
+
+                  </div>
+
+
+                  <div class="col-12">
+
+                    <label
+                      class="form-label"
+                      for="orgAddress"
+                    >
+                      العنوان
+                    </label>
+
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="orgAddress"
+                      placeholder="عنوان المؤسسة"
+                    >
+
+                  </div>
+
+
+                  <div class="col-12">
+
+                    <label
+                      class="form-label"
+                      for="orgAbout"
+                    >
+                      نبذة عن المؤسسة
+                    </label>
+
+                    <textarea
+                      class="form-control"
+                      id="orgAbout"
+                      rows="4"
+                      placeholder="اكتب نبذة مختصرة عن المؤسسة"
+                    ></textarea>
+
+                  </div>
+
+                </div>
+
+
+                <div class="mt-4">
+
+                  <button
+                    type="submit"
+                    class="btn btn-primary"
+                  >
+                    <i class="bi bi-check-lg me-1"></i>
+                    حفظ بيانات المؤسسة
+                  </button>
+
+                </div>
+
+              </form>
+
             </div>
+
           </div>
 
-          <!-- 6) النسخ الاحتياطي -->
-          <div class="card-box settings-pane d-none" id="pane-backup">
-            <div class="card-head"><h3><i class="bi bi-cloud-arrow-down text-primary me-2"></i> النسخ الاحتياطي</h3></div>
-            <div class="card-body-p">
-              <p class="text-muted">يمكنك إنشاء نسخة احتياطية كاملة من قاعدة البيانات واستعادتها عند الحاجة.</p>
-              <div class="d-flex gap-2 flex-wrap mb-4">
-                <button class="btn btn-primary" id="createBackupBtn"><i class="bi bi-download me-1"></i> إنشاء نسخة احتياطية</button>
-                <button class="btn btn-soft" id="restoreBackupBtn"><i class="bi bi-upload me-1"></i> استعادة نسخة</button>
-                <button class="btn btn-soft" id="autoBackupToggle"><i class="bi bi-clock-history me-1"></i> نسخ تلقائي يومي</button>
-              </div>
-              <h6 class="fw-bold mb-2">آخر النسخ</h6>
-              <div class="table-responsive">
-                <table class="table-box">
-                  <thead><tr><th>التاريخ</th><th>الحجم</th><th>النوع</th><th>إجراء</th></tr></thead>
-                  <tbody id="backupTableBody"></tbody>
-                </table>
-              </div>
+
+          <!-- =================================================
+               ADMIN
+          ================================================== -->
+
+          <div
+            class="card-box settings-pane d-none"
+            id="pane-admin"
+          >
+
+            <div class="card-head">
+
+              <h3>
+                <i class="bi bi-person-gear text-primary"></i>
+                بيانات المدير
+              </h3>
+
             </div>
+
+
+            <div class="card-body-p">
+
+              <!-- بيانات المدير -->
+
+              <form id="adminForm">
+
+                <div class="admin-user-info mb-4">
+
+                  <div
+                    class="admin-avatar"
+                    id="adminAvatar"
+                  >
+                    أ
+                  </div>
+
+                  <div>
+
+                    <h6
+                      class="mb-1"
+                      id="adminDisplayName"
+                    >
+                      —
+                    </h6>
+
+                    <p
+                      class="text-muted mb-0"
+                      id="adminDisplayRole"
+                    >
+                      —
+                    </p>
+
+                  </div>
+
+                </div>
+
+
+                <div class="row g-3">
+
+                  <div class="col-md-6">
+
+                    <label
+                      class="form-label"
+                      for="adminName"
+                    >
+                      الاسم الكامل
+                    </label>
+
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="adminName"
+                      required
+                    >
+
+                  </div>
+
+
+                  <div class="col-md-6">
+
+                    <label
+                      class="form-label"
+                      for="adminTitle"
+                    >
+                      المسمى الوظيفي
+                    </label>
+
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="adminTitle"
+                      placeholder="مدير النظام"
+                    >
+
+                  </div>
+
+
+                  <div class="col-md-6">
+
+                    <label
+                      class="form-label"
+                      for="adminEmail"
+                    >
+                      البريد الإلكتروني
+                    </label>
+
+                    <input
+                      type="email"
+                      class="form-control"
+                      id="adminEmail"
+                      required
+                    >
+
+                  </div>
+
+
+                  <div class="col-md-6">
+
+                    <label
+                      class="form-label"
+                      for="adminPhone"
+                    >
+                      رقم الهاتف
+                    </label>
+
+                    <input
+                      type="tel"
+                      class="form-control"
+                      id="adminPhone"
+                      placeholder="رقم الهاتف"
+                    >
+
+                  </div>
+
+                </div>
+
+
+                <div class="mt-4">
+
+                  <button
+                    type="submit"
+                    class="btn btn-primary"
+                  >
+                    <i class="bi bi-check-lg me-1"></i>
+                    حفظ بيانات المدير
+                  </button>
+
+                </div>
+
+              </form>
+
+
+              <!-- =================================================
+                   CHANGE PASSWORD
+              ================================================== -->
+
+              <div class="password-section">
+
+                <div class="password-section-title">
+
+                  <i class="bi bi-shield-lock"></i>
+
+                  <div>
+
+                    <h6>
+                      تغيير كلمة المرور
+                    </h6>
+
+                    <p>
+                      حدّث كلمة مرور حسابك للحفاظ على أمان الحساب.
+                    </p>
+
+                  </div>
+
+                </div>
+
+
+                <!--
+                  هذا الفورم منفصل تمامًا عن adminForm.
+                  مهم جدًا حتى يعمل JavaScript.
+                -->
+
+                <form id="passwordForm">
+
+                  <div class="row g-3">
+
+
+                    <!-- Current -->
+
+                    <div class="col-md-4">
+
+                      <label
+                        class="form-label"
+                        for="currentPassword"
+                      >
+                        كلمة المرور الحالية
+                      </label>
+
+                      <div class="password-input">
+
+                        <input
+                          type="password"
+                          class="form-control"
+                          id="currentPassword"
+                          autocomplete="current-password"
+                          placeholder="كلمة المرور الحالية"
+                          required
+                        >
+
+                        <button
+                          type="button"
+                          class="password-toggle"
+                          data-target="currentPassword"
+                          aria-label="إظهار كلمة المرور"
+                        >
+                          <i class="bi bi-eye"></i>
+                        </button>
+
+                      </div>
+
+                    </div>
+
+
+                    <!-- New -->
+
+                    <div class="col-md-4">
+
+                      <label
+                        class="form-label"
+                        for="newPassword"
+                      >
+                        كلمة المرور الجديدة
+                      </label>
+
+                      <div class="password-input">
+
+                        <input
+                          type="password"
+                          class="form-control"
+                          id="newPassword"
+                          autocomplete="new-password"
+                          minlength="6"
+                          placeholder="6 أحرف على الأقل"
+                          required
+                        >
+
+                        <button
+                          type="button"
+                          class="password-toggle"
+                          data-target="newPassword"
+                          aria-label="إظهار كلمة المرور"
+                        >
+                          <i class="bi bi-eye"></i>
+                        </button>
+
+                      </div>
+
+                    </div>
+
+
+                    <!-- Confirm -->
+
+                    <div class="col-md-4">
+
+                      <label
+                        class="form-label"
+                        for="confirmPassword"
+                      >
+                        تأكيد كلمة المرور
+                      </label>
+
+                      <div class="password-input">
+
+                        <input
+                          type="password"
+                          class="form-control"
+                          id="confirmPassword"
+                          autocomplete="new-password"
+                          minlength="6"
+                          placeholder="أعد كتابة كلمة المرور"
+                          required
+                        >
+
+                        <button
+                          type="button"
+                          class="password-toggle"
+                          data-target="confirmPassword"
+                          aria-label="إظهار كلمة المرور"
+                        >
+                          <i class="bi bi-eye"></i>
+                        </button>
+
+                      </div>
+
+                    </div>
+
+
+                    <div class="col-12">
+
+                      <div class="password-hint">
+
+                        <i class="bi bi-info-circle"></i>
+
+                        <span>
+                          يجب أن تحتوي كلمة المرور الجديدة على 6 أحرف أو أرقام على الأقل.
+                        </span>
+
+                      </div>
+
+                    </div>
+
+
+                    <div class="col-12">
+
+                      <button
+                        type="submit"
+                        class="btn btn-primary"
+                        id="changePasswordBtn"
+                      >
+                        <i class="bi bi-key me-1"></i>
+                        تغيير كلمة المرور
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                </form>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- =================================================
+               SYSTEM
+          ================================================== -->
+
+          <div
+            class="card-box settings-pane d-none"
+            id="pane-system"
+          >
+
+            <div class="card-head">
+
+              <h3>
+                <i class="bi bi-sliders text-primary"></i>
+                إعدادات النظام
+              </h3>
+
+            </div>
+
+
+            <div class="card-body-p">
+
+              <div class="row g-4">
+
+                <div class="col-md-6">
+
+                  <label
+                    class="form-label"
+                    for="sysLang"
+                  >
+                    لغة الواجهة
+                  </label>
+
+                  <select
+                    class="form-select"
+                    id="sysLang"
+                  >
+
+                    <option value="ar" selected>
+                      العربية
+                    </option>
+
+                    <option value="en">
+                      English
+                    </option>
+
+                  </select>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                  <label
+                    class="form-label"
+                    for="sysTimezone"
+                  >
+                    المنطقة الزمنية
+                  </label>
+
+                  <select
+                    class="form-select"
+                    id="sysTimezone"
+                  >
+
+                    <option value="Africa/Khartoum" selected>
+                      الخرطوم (GMT+2)
+                    </option>
+
+                    <option value="Africa/Cairo">
+                      القاهرة (GMT+3)
+                    </option>
+
+                    <option value="Asia/Riyadh">
+                      الرياض (GMT+3)
+                    </option>
+
+                    <option value="Asia/Dubai">
+                      دبي (GMT+4)
+                    </option>
+
+                  </select>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                  <label
+                    class="form-label"
+                    for="sysDateFormat"
+                  >
+                    تنسيق التاريخ
+                  </label>
+
+                  <select
+                    class="form-select"
+                    id="sysDateFormat"
+                  >
+
+                    <option value="DD/MM/YYYY" selected>
+                      يوم/شهر/سنة
+                    </option>
+
+                    <option value="YYYY-MM-DD">
+                      سنة-شهر-يوم
+                    </option>
+
+                  </select>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                  <label
+                    class="form-label"
+                    for="sysPerPage"
+                  >
+                    عدد السجلات في الصفحة
+                  </label>
+
+                  <select
+                    class="form-select"
+                    id="sysPerPage"
+                  >
+
+                    <option value="10">
+                      10
+                    </option>
+
+                    <option value="25" selected>
+                      25
+                    </option>
+
+                    <option value="50">
+                      50
+                    </option>
+
+                    <option value="100">
+                      100
+                    </option>
+
+                  </select>
+
+                </div>
+
+
+                <div class="col-12">
+
+                  <hr>
+
+                  <h6 class="fw-bold mb-3">
+                    التنبيهات والواجهة
+                  </h6>
+
+
+                  <div class="form-check form-switch mb-3">
+
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="sysNotifEmail"
+                      checked
+                    >
+
+                    <label
+                      class="form-check-label"
+                      for="sysNotifEmail"
+                    >
+                      إرسال إشعارات بالبريد الإلكتروني
+                    </label>
+
+                  </div>
+
+
+                  <div class="form-check form-switch mb-3">
+
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="sysSound"
+                      checked
+                    >
+
+                    <label
+                      class="form-check-label"
+                      for="sysSound"
+                    >
+                      تنبيه صوتي عند حجز موعد
+                    </label>
+
+                  </div>
+
+
+                  <div class="form-check form-switch">
+
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="sysDark"
+                    >
+
+                    <label
+                      class="form-check-label"
+                      for="sysDark"
+                    >
+                      الوضع الليلي
+                    </label>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              <div class="mt-4">
+
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  id="saveSystemBtn"
+                >
+                  <i class="bi bi-check-lg me-1"></i>
+                  حفظ إعدادات النظام
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- =================================================
+               APPOINTMENTS
+          ================================================== -->
+
+          <div
+            class="card-box settings-pane d-none"
+            id="pane-appt"
+          >
+
+            <div class="card-head">
+
+              <h3>
+                <i class="bi bi-calendar-check text-primary"></i>
+                إعدادات المواعيد
+              </h3>
+
+            </div>
+
+
+            <div class="card-body-p">
+
+              <div class="row g-3">
+
+                <div class="col-md-4">
+
+                  <label
+                    class="form-label"
+                    for="apptDuration"
+                  >
+                    مدة الموعد الافتراضية
+                  </label>
+
+                  <div class="input-group">
+
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="apptDuration"
+                      value="30"
+                      min="5"
+                      step="5"
+                    >
+
+                    <span class="input-group-text">
+                      دقيقة
+                    </span>
+
+                  </div>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                  <label
+                    class="form-label"
+                    for="apptStart"
+                  >
+                    بداية ساعات العمل
+                  </label>
+
+                  <input
+                    type="time"
+                    class="form-control"
+                    id="apptStart"
+                    value="09:00"
+                  >
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                  <label
+                    class="form-label"
+                    for="apptEnd"
+                  >
+                    نهاية ساعات العمل
+                  </label>
+
+                  <input
+                    type="time"
+                    class="form-control"
+                    id="apptEnd"
+                    value="21:00"
+                  >
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                  <label
+                    class="form-label"
+                    for="apptMaxPerDoctor"
+                  >
+                    أقصى عدد مواعيد في اليوم للطبيب
+                  </label>
+
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="apptMaxPerDoctor"
+                    value="20"
+                    min="1"
+                  >
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                  <label
+                    class="form-label"
+                    for="apptCancelWindow"
+                  >
+                    مدة الإلغاء المسموح بها قبل الموعد
+                  </label>
+
+                  <div class="input-group">
+
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="apptCancelWindow"
+                      value="2"
+                      min="0"
+                    >
+
+                    <span class="input-group-text">
+                      ساعة
+                    </span>
+
+                  </div>
+
+                </div>
+
+
+                <div class="col-12">
+
+                  <div class="form-check form-switch">
+
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="apptAllowOverlap"
+                    >
+
+                    <label
+                      class="form-check-label"
+                      for="apptAllowOverlap"
+                    >
+                      السماح بتداخل المواعيد لنفس الطبيب
+                    </label>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              <div class="mt-4">
+
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  id="saveApptBtn"
+                >
+                  <i class="bi bi-check-lg me-1"></i>
+                  حفظ إعدادات المواعيد
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- =================================================
+               USERS
+          ================================================== -->
+
+          <div
+            class="card-box settings-pane d-none"
+            id="pane-users"
+          >
+
+            <div class="card-head">
+
+              <h3>
+                <i class="bi bi-people text-primary"></i>
+                الحسابات والصلاحيات
+              </h3>
+
+
+              <button
+                type="button"
+                class="btn btn-primary"
+                id="addUserBtn"
+                data-bs-toggle="modal"
+                data-bs-target="#userModal"
+              >
+                <i class="bi bi-person-plus me-1"></i>
+                إضافة مستخدم
+              </button>
+
+            </div>
+
+
+            <div class="table-responsive">
+
+              <table class="table-box">
+
+                <thead>
+
+                  <tr>
+                    <th>الاسم</th>
+                    <th>البريد</th>
+                    <th>الدور</th>
+                    <th>الحالة</th>
+                    <th style="width:120px">
+                      إجراءات
+                    </th>
+                  </tr>
+
+                </thead>
+
+
+                <tbody id="usersTableBody">
+
+                  <tr>
+
+                    <td
+                      colspan="5"
+                      class="empty-table"
+                    >
+
+                      <i class="bi bi-people"></i>
+
+                      جاري تحميل المستخدمين...
+
+                    </td>
+
+                  </tr>
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+
+
+          <!-- =================================================
+               BACKUP
+          ================================================== -->
+
+          <div
+            class="card-box settings-pane d-none"
+            id="pane-backup"
+          >
+
+            <div class="card-head">
+
+              <h3>
+                <i class="bi bi-cloud-arrow-down text-primary"></i>
+                النسخ الاحتياطي
+              </h3>
+
+            </div>
+
+
+            <div class="card-body-p">
+
+              <div class="backup-info">
+
+                <div class="d-flex align-items-center gap-3">
+
+                  <i class="bi bi-shield-check"></i>
+
+                  <div>
+
+                    <h6 class="fw-bold mb-1">
+                      حماية بيانات AmRash
+                    </h6>
+
+                    <p class="text-muted mb-0">
+                      أنشئ نسخة احتياطية دورية لحماية بيانات النظام.
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              <div class="d-flex gap-2 flex-wrap mb-4">
+
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  id="createBackupBtn"
+                >
+                  <i class="bi bi-download me-1"></i>
+                  إنشاء نسخة احتياطية
+                </button>
+
+
+                <button
+                  type="button"
+                  class="btn btn-soft"
+                  id="restoreBackupBtn"
+                >
+                  <i class="bi bi-upload me-1"></i>
+                  استعادة نسخة
+                </button>
+
+
+                <button
+                  type="button"
+                  class="btn btn-soft"
+                  id="autoBackupToggle"
+                >
+                  <i class="bi bi-clock-history me-1"></i>
+                  نسخ تلقائي يومي
+                </button>
+
+              </div>
+
+
+              <h6 class="fw-bold mb-2">
+                آخر النسخ
+              </h6>
+
+
+              <div class="table-responsive">
+
+                <table class="table-box">
+
+                  <thead>
+
+                    <tr>
+                      <th>التاريخ</th>
+                      <th>الحجم</th>
+                      <th>النوع</th>
+                      <th>إجراء</th>
+                    </tr>
+
+                  </thead>
+
+
+                  <tbody id="backupTableBody">
+
+                    <tr>
+
+                      <td
+                        colspan="4"
+                        class="empty-table"
+                      >
+
+                        <i class="bi bi-cloud"></i>
+
+                        لا توجد نسخ احتياطية حتى الآن.
+
+                      </td>
+
+                    </tr>
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+            </div>
+
           </div>
 
         </div>
+
       </div>
 
     </main>
+
   </div>
+
 </div>
 
-<!-- نافذة إضافة مستخدم -->
-<div class="modal fade" id="userModal" tabindex="-1">
+
+<!-- =========================================================
+     ADD USER MODAL
+========================================================= -->
+
+<div
+  class="modal fade"
+  id="userModal"
+  tabindex="-1"
+  aria-hidden="true"
+>
+
   <div class="modal-dialog modal-dialog-centered">
+
     <div class="modal-content">
+
       <div class="modal-header">
-        <h5 class="modal-title">إضافة مستخدم جديد</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+        <h5 class="modal-title">
+          إضافة مستخدم جديد
+        </h5>
+
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="إغلاق"
+        ></button>
+
       </div>
+
+
       <form id="userForm">
+
         <div class="modal-body">
+
           <div class="row g-3">
+
             <div class="col-12">
-              <label class="form-label">الاسم الكامل *</label>
-              <input type="text" class="form-control" id="uName" required>
+
+              <label
+                class="form-label"
+                for="uName"
+              >
+                الاسم الكامل *
+              </label>
+
+              <input
+                type="text"
+                class="form-control"
+                id="uName"
+                required
+              >
+
             </div>
+
+
             <div class="col-12">
-              <label class="form-label">البريد الإلكتروني *</label>
-              <input type="email" class="form-control" id="uEmail" required>
+
+              <label
+                class="form-label"
+                for="uEmail"
+              >
+                البريد الإلكتروني *
+              </label>
+
+              <input
+                type="email"
+                class="form-control"
+                id="uEmail"
+                required
+              >
+
             </div>
+
+
             <div class="col-md-6">
-              <label class="form-label">الدور *</label>
-              <select class="form-select" id="uRole" required>
-                <option value="admin">مدير النظام</option>
-                <option value="doctor">طبيب</option>
-                <option value="reception">موظف استقبال</option>
-                <option value="accountant">محاسب</option>
+
+              <label
+                class="form-label"
+                for="uRole"
+              >
+                الدور *
+              </label>
+
+              <select
+                class="form-select"
+                id="uRole"
+                required
+              >
+
+                <option value="admin">
+                  مدير النظام
+                </option>
+
+                <option value="doctor">
+                  طبيب
+                </option>
+
+                <option value="reception">
+                  موظف استقبال
+                </option>
+
+                <option value="accountant">
+                  محاسب
+                </option>
+
               </select>
+
             </div>
+
+
             <div class="col-md-6">
-              <label class="form-label">الحالة</label>
-              <select class="form-select" id="uStatus">
-                <option value="active">نشط</option>
-                <option value="inactive">غير نشط</option>
+
+              <label
+                class="form-label"
+                for="uStatus"
+              >
+                الحالة
+              </label>
+
+              <select
+                class="form-select"
+                id="uStatus"
+              >
+
+                <option value="active">
+                  نشط
+                </option>
+
+                <option value="inactive">
+                  غير نشط
+                </option>
+
               </select>
+
             </div>
+
+
             <div class="col-12">
-              <label class="form-label">كلمة المرور *</label>
-              <input type="password" class="form-control" id="uPass" required>
+
+              <label
+                class="form-label"
+                for="uPass"
+              >
+                كلمة المرور *
+              </label>
+
+              <input
+                type="password"
+                class="form-control"
+                id="uPass"
+                minlength="6"
+                required
+              >
+
             </div>
+
           </div>
+
         </div>
+
+
         <div class="modal-footer">
-          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+
+          <button
+            type="button"
+            class="btn btn-soft"
+            data-bs-dismiss="modal"
+          >
+            إلغاء
+          </button>
+
+
+          <button
+            type="submit"
+            class="btn btn-primary"
+          >
+
+            <i class="bi bi-check-lg me-1"></i>
+            حفظ
+
+          </button>
+
         </div>
+
       </form>
+
     </div>
+
   </div>
+
 </div>
+
+
+<!-- =========================================================
+     SCRIPTS
+========================================================= -->
 
 <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
-<script src="JS/app.js"></script>
+
+<script src="js/app.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  /* =====================================================
+     SETTINGS NAVIGATION
+  ===================================================== */
+
+  const settingsNav = document.getElementById("settingsNav");
+
+  if (settingsNav) {
+
+    const navItems = settingsNav.querySelectorAll("[data-pane]");
+    const panes = document.querySelectorAll(".settings-pane");
+
+    navItems.forEach(function (item) {
+
+      item.addEventListener("click", function () {
+
+        const targetPane = item.getAttribute("data-pane");
+
+        if (!targetPane) return;
+
+        /* إزالة التفعيل من كل الأقسام */
+        navItems.forEach(function (nav) {
+          nav.classList.remove("active");
+        });
+
+        /* تفعيل القسم المختار */
+        item.classList.add("active");
+
+        /* إخفاء كل المحتوى */
+        panes.forEach(function (pane) {
+          pane.classList.add("d-none");
+        });
+
+        /* إظهار المحتوى المطلوب */
+        const selectedPane =
+          document.getElementById("pane-" + targetPane);
+
+        if (selectedPane) {
+          selectedPane.classList.remove("d-none");
+
+          selectedPane.style.opacity = "0";
+
+          requestAnimationFrame(function () {
+            selectedPane.style.transition = "opacity 0.2s ease";
+            selectedPane.style.opacity = "1";
+          });
+        }
+
+      });
+
+    });
+
+  }
+
+
+  /* =====================================================
+     PASSWORD VISIBILITY
+  ===================================================== */
+
+  document
+    .querySelectorAll(".password-toggle")
+    .forEach(function (button) {
+
+      button.addEventListener("click", function () {
+
+        const targetId = button.dataset.target;
+        const input = document.getElementById(targetId);
+
+        if (!input) return;
+
+        const icon = button.querySelector("i");
+
+        if (input.type === "password") {
+
+          input.type = "text";
+
+          if (icon) {
+            icon.classList.remove("bi-eye");
+            icon.classList.add("bi-eye-slash");
+          }
+
+        } else {
+
+          input.type = "password";
+
+          if (icon) {
+            icon.classList.remove("bi-eye-slash");
+            icon.classList.add("bi-eye");
+          }
+
+        }
+
+      });
+
+    });
+
+});
+</script>
+
 </body>
 </html>
+
+
+

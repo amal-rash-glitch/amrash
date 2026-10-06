@@ -707,6 +707,7 @@ app.get(
                 dr.id,
                 dr.doctor_name,
                 dr.specialty,
+                dr.degree,
                 dr.phone,
                 dr.email,
                 dr.gender,
@@ -822,6 +823,7 @@ app.post(
             (
                 doctor_name,
                 specialty,
+                degree,
                 phone,
                 email,
                 gender,
@@ -836,6 +838,7 @@ app.post(
       [
         name,
         specialty,
+        clean(req.body.degree),
         phone,
         email,
         gender,
@@ -915,6 +918,7 @@ app.put(
             SET
                 doctor_name = ?,
                 specialty = ?,
+                degree = ?,
                 phone = ?,
                 email = ?,
                 gender = ?,
@@ -928,6 +932,7 @@ app.put(
       [
         name,
         specialty,
+        clean(req.body.degree),
         phone,
         email,
         gender,

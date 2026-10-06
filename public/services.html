@@ -170,34 +170,43 @@
   </div>
 </div>
 
-<!-- إضافة/تعديل خدمة -->
-<div class="modal fade" id="serviceModal" tabindex="-1">
+<!-- نافذة إضافة/تعديل خدمة -->
+<div class="modal fade" id="serviceModal" tabindex="-1" aria-labelledby="serviceModalTitle" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
+
       <div class="modal-header">
         <h5 class="modal-title" id="serviceModalTitle">إضافة خدمة جديدة</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
       </div>
+
       <form id="serviceForm">
+
         <div class="modal-body">
           <input type="hidden" id="serviceId">
+
           <div class="row g-3">
+
             <div class="col-md-6">
               <label class="form-label">اسم الخدمة *</label>
               <input type="text" class="form-control" id="sName" required>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">القسم *</label>
               <select class="form-select" id="sDepartment" required></select>
             </div>
+
             <div class="col-md-4">
               <label class="form-label">السعر (ج.س) *</label>
               <input type="number" class="form-control" id="sPrice" min="0" step="0.01" required>
             </div>
+
             <div class="col-md-4">
               <label class="form-label">المدة (دقيقة)</label>
               <input type="number" class="form-control" id="sDuration" min="0">
             </div>
+
             <div class="col-md-4">
               <label class="form-label">الحالة</label>
               <select class="form-select" id="sStatus">
@@ -205,16 +214,26 @@
                 <option value="inactive">معطّلة</option>
               </select>
             </div>
+
             <div class="col-12">
               <label class="form-label">وصف الخدمة</label>
               <textarea class="form-control" id="sDescription" rows="3"></textarea>
             </div>
+
           </div>
         </div>
+
         <div class="modal-footer">
-          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">
+            إلغاء
+          </button>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>
+            حفظ
+          </button>
         </div>
+
       </form>
     </div>
   </div>
@@ -255,6 +274,6 @@
 </div>
 
 <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
-<script src="JS/app.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

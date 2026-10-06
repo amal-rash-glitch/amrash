@@ -176,30 +176,38 @@
 </div>
 
 <!-- نافذة إضافة/تعديل طبيب -->
-<div class="modal fade" id="doctorModal" tabindex="-1">
+<div class="modal fade" id="doctorModal" tabindex="-1" aria-labelledby="doctorModalTitle" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
+
       <div class="modal-header">
         <h5 class="modal-title" id="doctorModalTitle">إضافة طبيب جديد</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
       </div>
+
       <form id="doctorForm">
+
         <div class="modal-body">
           <input type="hidden" id="doctorId">
+
           <div class="row g-3">
+
             <div class="col-md-6">
               <label class="form-label">الاسم الكامل *</label>
               <input type="text" class="form-control" id="dName" required>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">التخصص *</label>
               <input type="text" class="form-control" id="dSpecialty" list="specialtyList" required>
               <datalist id="specialtyList"></datalist>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">القسم *</label>
               <select class="form-select" id="dDepartment" required></select>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">الدرجة العلمية</label>
               <select class="form-select" id="dDegree">
@@ -209,22 +217,27 @@
                 <option value="نائب">نائب</option>
               </select>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">رقم الهاتف *</label>
               <input type="tel" class="form-control" id="dPhone" required>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">البريد الإلكتروني *</label>
               <input type="email" class="form-control" id="dEmail" required>
             </div>
+
             <div class="col-md-4">
               <label class="form-label">عدد سنوات الخبرة</label>
               <input type="number" class="form-control" id="dExperience" min="0">
             </div>
+
             <div class="col-md-4">
               <label class="form-label">سعر الكشف</label>
               <input type="number" class="form-control" id="dFee" min="0">
             </div>
+
             <div class="col-md-4">
               <label class="form-label">الحالة</label>
               <select class="form-select" id="dStatus">
@@ -233,36 +246,79 @@
                 <option value="inactive">غير نشط</option>
               </select>
             </div>
+
             <div class="col-12">
               <label class="form-label">أيام العمل</label>
+
               <div class="d-flex flex-wrap gap-3">
-                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="السبت" id="dSat"><label class="form-check-label" for="dSat">السبت</label></div>
-                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الأحد" id="dSun"><label class="form-check-label" for="dSun">الأحد</label></div>
-                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الاثنين" id="dMon"><label class="form-check-label" for="dMon">الاثنين</label></div>
-                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الثلاثاء" id="dTue"><label class="form-check-label" for="dTue">الثلاثاء</label></div>
-                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الأربعاء" id="dWed"><label class="form-check-label" for="dWed">الأربعاء</label></div>
-                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الخميس" id="dThu"><label class="form-check-label" for="dThu">الخميس</label></div>
-                <div class="form-check"><input class="form-check-input day-check" type="checkbox" value="الجمعة" id="dFri"><label class="form-check-label" for="dFri">الجمعة</label></div>
+
+                <div class="form-check">
+                  <input class="form-check-input day-check" type="checkbox" value="السبت" id="dSat">
+                  <label class="form-check-label" for="dSat">السبت</label>
+                </div>
+
+                <div class="form-check">
+                  <input class="form-check-input day-check" type="checkbox" value="الأحد" id="dSun">
+                  <label class="form-check-label" for="dSun">الأحد</label>
+                </div>
+
+                <div class="form-check">
+                  <input class="form-check-input day-check" type="checkbox" value="الاثنين" id="dMon">
+                  <label class="form-check-label" for="dMon">الاثنين</label>
+                </div>
+
+                <div class="form-check">
+                  <input class="form-check-input day-check" type="checkbox" value="الثلاثاء" id="dTue">
+                  <label class="form-check-label" for="dTue">الثلاثاء</label>
+                </div>
+
+                <div class="form-check">
+                  <input class="form-check-input day-check" type="checkbox" value="الأربعاء" id="dWed">
+                  <label class="form-check-label" for="dWed">الأربعاء</label>
+                </div>
+
+                <div class="form-check">
+                  <input class="form-check-input day-check" type="checkbox" value="الخميس" id="dThu">
+                  <label class="form-check-label" for="dThu">الخميس</label>
+                </div>
+
+                <div class="form-check">
+                  <input class="form-check-input day-check" type="checkbox" value="الجمعة" id="dFri">
+                  <label class="form-check-label" for="dFri">الجمعة</label>
+                </div>
+
               </div>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">من الساعة</label>
               <input type="time" class="form-control" id="dFrom">
             </div>
+
             <div class="col-md-6">
               <label class="form-label">إلى الساعة</label>
               <input type="time" class="form-control" id="dTo">
             </div>
+
             <div class="col-12">
               <label class="form-label">نبذة / ملاحظات</label>
               <textarea class="form-control" id="dBio" rows="2"></textarea>
             </div>
+
           </div>
         </div>
+
         <div class="modal-footer">
-          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">
+            إلغاء
+          </button>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>
+            حفظ
+          </button>
         </div>
+
       </form>
     </div>
   </div>
@@ -306,6 +362,6 @@
 
 
 <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
-<script src="JS/app.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

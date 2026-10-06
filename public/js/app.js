@@ -1,16 +1,20 @@
-/* =========================================================
+
+   /* =========================================================
    AmRash — Unified Application JavaScript
-   Frontend واحد لجميع صفحات النظام
-========================================================= */
-
-const API_URL = window.AMRASH_API || "/api";
-
-const TOKEN_KEY = "amrash_token";
-const USER_KEY = "amrash_user";
+   Arabic Medical Management System
+   ========================================================= */
 
 /* =========================================================
 1. AUTHENTICATION
 ========================================================= */
+
+const API_URL =
+  window.AMRASH_API ||
+  (window.location.port === "5500"
+    ? "http://localhost:3000/api"
+    : "/api");
+const TOKEN_KEY = "amrash_token";
+const USER_KEY = "amrash_user";
 
 const Auth = {
   getToken() {
@@ -19,20 +23,28 @@ const Auth = {
 
   getUser() {
     try {
-      return JSON.parse(localStorage.getItem(USER_KEY));
-    } catch {
+      const value = localStorage.getItem(USER_KEY);
+      return value ? JSON.parse(value) : null;
+    } catch (error) {
+      console.error("User parse error:", error);
       return null;
     }
   },
 
   setSession(token, user) {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    }
+
+    if (user) {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    }
   },
 
   clear() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem("amrash_remember");
   },
 
   isLoggedIn() {
@@ -41,17 +53,16 @@ const Auth = {
 
   isLoginPage() {
     const path = window.location.pathname.toLowerCase();
+    const file = path.split("/").pop();
 
-    return (
-      path === "/" ||
-      path === "" ||
-      path.endsWith("/login.html") ||
-      path.endsWith("login.html")
-    );
+    return file === "login.html";
   },
 
   requireAuth() {
-    if (this.isLoginPage()) return true;
+    if (this.isLoginPage()) {
+      return true;
+    }
+    console.log("LOGIN PAGE INIT");
 
     if (!this.isLoggedIn()) {
       window.location.href = "login.html";
@@ -63,104 +74,277 @@ const Auth = {
 
   logout() {
     this.clear();
-    window.location.href = "login.html";
-  },
+
+    try {
+      sessionStorage.clear();
+    } catch (error) {
+      console.warn("Session storage clear failed:", error);
+    }
+
+    window.location.replace("login.html");
+  }
 };
+
 
 /* =========================================================
 2. API
 ========================================================= */
 
 const API = {
+
   async request(endpoint, options = {}) {
-    const headers = {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    };
 
     const token = Auth.getToken();
 
-    if (token) {
+    const isLoginRequest =
+      endpoint === "/auth/login" ||
+      endpoint.endsWith("/auth/login");
+
+    const headers = {
+      Accept: "application/json",
+      ...(options.headers || {})
+    };
+
+    /*
+    ---------------------------------------------------------
+    لا نرسل التوكن مع تسجيل الدخول
+    ---------------------------------------------------------
+    */
+    if (token && !isLoginRequest) {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const config = {
-      ...options,
-      headers,
-    };
+    let body = options.body;
 
+    /*
+    ---------------------------------------------------------
+    تحويل Body إلى JSON
+    ---------------------------------------------------------
+    */
     if (
-      config.body &&
-      typeof config.body === "object" &&
-      !(config.body instanceof FormData)
+      body &&
+      typeof body === "object" &&
+      !(body instanceof FormData) &&
+      !(body instanceof Blob)
     ) {
-      config.body = JSON.stringify(config.body);
+      headers["Content-Type"] = "application/json";
+      body = JSON.stringify(body);
     }
 
     let response;
 
+    /*
+    ---------------------------------------------------------
+    الاتصال بالخادم
+    ---------------------------------------------------------
+    */
     try {
-      response = await fetch(`${API_URL}${endpoint}`, config);
-    } catch {
-      throw new Error("تعذر الاتصال بالخادم. تأكدي أن السيرفر يعمل.");
-    }
 
-    if (response.status === 401) {
-      Auth.clear();
+      response = await fetch(
+        `${API_URL}${endpoint}`,
+        {
+          ...options,
+          headers,
+          body
+        }
+      );
 
-      if (!Auth.isLoginPage()) {
-        window.location.href = "login.html";
-      }
+    } catch (error) {
 
-      return null;
-    }
+      console.error(
+        "API connection error:",
+        error
+      );
 
-    let data = {};
-
-    const contentType = response.headers.get("content-type") || "";
-
-    if (contentType.includes("application/json")) {
-      data = await response.json().catch(() => ({}));
-    } else {
-      const text = await response.text().catch(() => "");
-      data = text ? { message: text } : {};
-    }
-
-    if (!response.ok) {
       throw new Error(
-        data.message || data.error || `حدث خطأ في الخادم (${response.status})`,
+        "تعذر الاتصال بالخادم. تأكد من تشغيل الخادم ثم حاول مرة أخرى."
       );
     }
 
-    return data;
+    /*
+    ---------------------------------------------------------
+    قراءة استجابة الخادم
+    ---------------------------------------------------------
+    */
+
+    let result = null;
+
+    const contentType =
+      response.headers.get("content-type") || "";
+
+    try {
+
+      if (
+        contentType.includes(
+          "application/json"
+        )
+      ) {
+
+        result = await response.json();
+
+      } else {
+
+        const text =
+          await response.text();
+
+        try {
+
+          result =
+            text
+              ? JSON.parse(text)
+              : null;
+
+        } catch {
+
+          result = text;
+        }
+      }
+
+    } catch (error) {
+
+      console.error(
+        "API response parsing error:",
+        error
+      );
+
+      result = null;
+    }
+
+    /*
+    ---------------------------------------------------------
+    401 - تسجيل الدخول
+    ---------------------------------------------------------
+    */
+
+    if (response.status === 401) {
+
+      /*
+      إذا كان الطلب هو تسجيل الدخول،
+      لا نمسح الجلسة ولا نعيد التوجيه.
+      نعرض رسالة الخادم للمستخدم.
+      */
+
+      if (isLoginRequest) {
+
+        const message =
+          result?.message ||
+          result?.error ||
+          "بيانات تسجيل الدخول غير صحيحة.";
+
+        throw new Error(message);
+      }
+
+      /*
+      401 في أي صفحة أخرى يعني انتهاء الجلسة
+      */
+
+      Auth.clear();
+
+      if (!Auth.isLoginPage()) {
+
+        window.location.replace(
+          "login.html"
+        );
+      }
+
+      throw new Error(
+        "انتهت جلسة تسجيل الدخول."
+      );
+    }
+
+    /*
+    ---------------------------------------------------------
+    أخطاء الخادم الأخرى
+    ---------------------------------------------------------
+    */
+
+    if (!response.ok) {
+
+      const message =
+        result?.message ||
+        result?.error ||
+        result?.errors?.[0]?.message ||
+        `حدث خطأ في الخادم (${response.status}).`;
+
+      throw new Error(message);
+    }
+
+    /*
+    ---------------------------------------------------------
+    الاستجابة الناجحة
+    ---------------------------------------------------------
+    */
+
+    return result;
   },
+
+  /*
+  ---------------------------------------------------------
+  GET
+  ---------------------------------------------------------
+  */
 
   get(endpoint) {
-    return this.request(endpoint, {
-      method: "GET",
-    });
+
+    return this.request(
+      endpoint,
+      {
+        method: "GET"
+      }
+    );
   },
+
+  /*
+  ---------------------------------------------------------
+  POST
+  ---------------------------------------------------------
+  */
 
   post(endpoint, body) {
-    return this.request(endpoint, {
-      method: "POST",
-      body,
-    });
+
+    return this.request(
+      endpoint,
+      {
+        method: "POST",
+        body
+      }
+    );
   },
+
+  /*
+  ---------------------------------------------------------
+  PUT
+  ---------------------------------------------------------
+  */
 
   put(endpoint, body) {
-    return this.request(endpoint, {
-      method: "PUT",
-      body,
-    });
+
+    return this.request(
+      endpoint,
+      {
+        method: "PUT",
+        body
+      }
+    );
   },
 
+  /*
+  ---------------------------------------------------------
+  DELETE
+  ---------------------------------------------------------
+  */
+
   del(endpoint) {
-    return this.request(endpoint, {
-      method: "DELETE",
-    });
-  },
+
+    return this.request(
+      endpoint,
+      {
+        method: "DELETE"
+      }
+    );
+  }
 };
+
 
 /* =========================================================
 3. HELPERS
@@ -168,9 +352,12 @@ const API = {
 
 const Helpers = {
   escapeHTML(value) {
-    const div = document.createElement("div");
-    div.textContent = value ?? "";
-    return div.innerHTML;
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   },
 
   normalize(value) {
@@ -180,139 +367,148 @@ const Helpers = {
   },
 
   today() {
-    const d = new Date();
+    const date = new Date();
 
-    return [
-      d.getFullYear(),
-      String(d.getMonth() + 1).padStart(2, "0"),
-      String(d.getDate()).padStart(2, "0"),
-    ].join("-");
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
   },
 
   formatDate(value) {
-    if (!value) return "—";
-
-    const raw = String(value);
-
-    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
-      const parts = raw.slice(0, 10).split("-");
-
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
+    if (!value) {
+      return "—";
     }
 
     const date = new Date(value);
 
     if (Number.isNaN(date.getTime())) {
-      return raw.slice(0, 10);
+      return String(value);
     }
 
-    return `${String(date.getDate()).padStart(2, "0")}/${String(
-      date.getMonth() + 1,
-    ).padStart(2, "0")}/${date.getFullYear()}`;
+    return date.toLocaleDateString("ar-EG", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    });
   },
 
   formatTime(value) {
-    if (!value) return "—";
-    return String(value).slice(0, 5);
+    if (!value) {
+      return "—";
+    }
+
+    const text = String(value);
+
+    const match = text.match(/^(\d{1,2}):(\d{2})/);
+
+    if (!match) {
+      return text;
+    }
+
+    const hour = Number(match[1]);
+    const minute = match[2];
+
+    if (Number.isNaN(hour)) {
+      return text;
+    }
+
+    const suffix = hour >= 12 ? "م" : "ص";
+    const displayHour = hour % 12 || 12;
+
+    return `${displayHour}:${minute} ${suffix}`;
   },
 
   calcAge(value) {
-    if (!value) return "—";
+    if (!value) {
+      return "—";
+    }
 
     const birth = new Date(value);
-    const now = new Date();
 
-    if (Number.isNaN(birth.getTime())) return "—";
+    if (Number.isNaN(birth.getTime())) {
+      return "—";
+    }
+
+    const now = new Date();
 
     let age = now.getFullYear() - birth.getFullYear();
 
-    const month = now.getMonth() - birth.getMonth();
+    const monthDifference =
+      now.getMonth() - birth.getMonth();
 
-    if (month < 0 || (month === 0 && now.getDate() < birth.getDate())) {
+    if (
+      monthDifference < 0 ||
+      (
+        monthDifference === 0 &&
+        now.getDate() < birth.getDate()
+      )
+    ) {
       age--;
     }
 
-    return age >= 0 ? `${age} سنة` : "—";
+    return age >= 0 ? age : "—";
   },
 
-  money(value, currency = "ج.س") {
+  money(value) {
     const number = Number(value || 0);
 
-    return `${number.toLocaleString("ar-EG")} ${currency}`;
+    return number.toLocaleString("ar-EG", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
   },
 
   getValue(id) {
-    const el = document.getElementById(id);
-    return el ? el.value.trim() : "";
+    return document.getElementById(id)?.value ?? "";
   },
 
   setValue(id, value) {
-    const el = document.getElementById(id);
+    const element = document.getElementById(id);
 
-    if (el) {
-      el.value = value ?? "";
+    if (element) {
+      element.value = value ?? "";
     }
   },
 
   setText(id, value) {
-    const el = document.getElementById(id);
+    const element = document.getElementById(id);
 
-    if (el) {
-      el.textContent = value ?? "";
+    if (element) {
+      element.textContent = value ?? "";
     }
   },
 
   getQuery(name) {
-    return new URLSearchParams(window.location.search).get(name);
+    return new URLSearchParams(
+      window.location.search
+    ).get(name);
   },
 
   paginate(items, page = 1, perPage = 10) {
-    const list = Array.isArray(items) ? items : [];
-    const total = list.length;
+    const currentPage = Math.max(1, Number(page) || 1);
+    const limit = Math.max(1, Number(perPage) || 10);
 
-    const pages = Math.max(1, Math.ceil(total / perPage));
-
-    const current = Math.min(Math.max(Number(page) || 1, 1), pages);
-
-    const start = (current - 1) * perPage;
+    const start = (currentPage - 1) * limit;
 
     return {
-      items: list.slice(start, start + perPage),
-      page: current,
-      pages,
-      total,
+      data: items.slice(start, start + limit),
+      page: currentPage,
+      perPage: limit,
+      total: items.length,
+      pages: Math.max(1, Math.ceil(items.length / limit))
     };
   },
 
   status(value) {
-    const normalized = this.normalize(value);
-
-    if (normalized === "scheduled" || normalized === "pending") {
-      return "pending";
-    }
-
-    if (normalized === "confirmed") return "confirmed";
-    if (normalized === "completed") return "completed";
-
-    if (normalized === "cancelled" || normalized === "canceled") {
-      return "cancelled";
-    }
-
-    if (
-      normalized === "noshow" ||
-      normalized === "no-show" ||
-      normalized === "no_show"
-    ) {
-      return "noshow";
-    }
-
-    return normalized;
+    return String(value || "")
+      .trim()
+      .toLowerCase();
   },
 
   statusText(value) {
-    const status = this.status(value);
+    const normalized = this.status(value);
 
     const map = {
       active: "نشط",
@@ -321,37 +517,60 @@ const Helpers = {
       confirmed: "مؤكد",
       completed: "مكتمل",
       cancelled: "ملغي",
-      noshow: "لم يحضر",
+      canceled: "ملغي",
       scheduled: "مجدول",
+      available: "متاح",
+      unavailable: "غير متاح",
       leave: "إجازة",
       on_leave: "إجازة",
+      male: "ذكر",
+      female: "أنثى"
     };
 
-    return map[status] || value || "—";
+    return map[normalized] || value || "—";
   },
 
   badge(value) {
-    const status = this.status(value);
+    const normalized = this.status(value);
 
-    const classes = {
-      active: "success",
-      inactive: "secondary",
-      pending: "warning",
-      confirmed: "primary",
-      completed: "success",
-      cancelled: "danger",
-      noshow: "dark",
-      scheduled: "warning",
-      leave: "warning",
-    };
+    let cls = "secondary";
+
+    if (
+      ["active", "confirmed", "completed", "available"].includes(
+        normalized
+      )
+    ) {
+      cls = "success";
+    }
+
+    if (
+      ["pending", "scheduled"].includes(normalized)
+    ) {
+      cls = "warning";
+    }
+
+    if (
+      ["inactive", "cancelled", "canceled", "unavailable"].includes(
+        normalized
+      )
+    ) {
+      cls = "danger";
+    }
+
+    if (
+      ["leave", "on_leave"].includes(normalized)
+    ) {
+      cls = "info";
+    }
 
     return `
-      <span class="badge text-bg-${classes[status] || "secondary"}">
+      <span class="badge text-bg-${cls}">
         ${this.escapeHTML(this.statusText(value))}
       </span>
     `;
-  },
+  }
 };
+
 
 /* =========================================================
 4. TOAST
@@ -361,86 +580,72 @@ const Toast = {
   container: null,
 
   init() {
-    if (this.container) return;
+    if (this.container) {
+      return;
+    }
 
     this.container = document.createElement("div");
 
+    this.container.id = "amrashToastContainer";
+
     this.container.style.cssText = `
-      position:fixed;
-      top:80px;
-      left:20px;
-      z-login:99999;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      direction:rtl;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 99999;
+      width: min(390px, calc(100vw - 40px));
     `;
 
     document.body.appendChild(this.container);
   },
 
-  show(message, type = "success") {
+  show(message, type = "info", duration = 3500) {
     this.init();
 
-    const colors = {
-      success: "#198754",
-      danger: "#dc3545",
-      warning: "#ffc107",
-      info: "#0dcaf0",
+    const iconMap = {
+      success: "bi-check-circle-fill",
+      danger: "bi-x-circle-fill",
+      warning: "bi-exclamation-triangle-fill",
+      info: "bi-info-circle-fill"
     };
 
-    const icons = {
-      success: "check-circle-fill",
-      danger: "x-circle-fill",
-      warning: "exclamation-triangle-fill",
-      info: "info-circle-fill",
-    };
+    const icon =
+      iconMap[type] || iconMap.info;
 
-    const color = colors[type] || colors.info;
+    const toast = document.createElement("div");
 
-    const element = document.createElement("div");
-
-    element.style.cssText = `
-      background:#fff;
-      border-right:4px solid ${color};
-      color:#22313f;
-      padding:14px 18px;
-      border-radius:12px;
-      box-shadow:0 10px 30px rgba(15,34,51,.15);
+    toast.className = `alert alert-${type} shadow-sm border-0`;
+    toast.style.cssText = `
       display:flex;
       align-items:center;
       gap:10px;
-      font-weight:600;
-      font-size:14.5px;
-      min-width:280px;
-      max-width:380px;
-      opacity:0;
-      transform:translateY(-10px);
-      transition:all .3s ease;
-      font-family:'Tajawal',sans-serif;
+      margin-bottom:10px;
+      font-family:Tajawal, sans-serif;
     `;
 
-    element.innerHTML = `
-      <i
-        class="bi bi-${icons[type] || icons.info}"
-        style="color:${color};font-size:18px">
-      </i>
-      <span>${Helpers.escapeHTML(message)}</span>
+    toast.innerHTML = `
+      <i class="bi ${icon}"></i>
+      <span style="flex:1">
+        ${Helpers.escapeHTML(message)}
+      </span>
+      <button
+        type="button"
+        class="btn-close"
+        aria-label="إغلاق"
+      ></button>
     `;
 
-    this.container.appendChild(element);
+    const close = () => {
+      toast.remove();
+    };
 
-    requestAnimationFrame(() => {
-      element.style.opacity = "1";
-      element.style.transform = "translateY(0)";
-    });
+    toast
+      .querySelector(".btn-close")
+      ?.addEventListener("click", close);
 
-    setTimeout(() => {
-      element.style.opacity = "0";
-      element.style.transform = "translateY(-10px)";
+    this.container.appendChild(toast);
 
-      setTimeout(() => element.remove(), 300);
-    }, 3500);
+    setTimeout(close, duration);
   },
 
   success(message) {
@@ -457,31 +662,35 @@ const Toast = {
 
   info(message) {
     this.show(message, "info");
-  },
+  }
 };
+
 
 /* =========================================================
 5. PAGE
 ========================================================= */
 
 function getCurrentPage() {
-  const path = window.location.pathname || "";
-  const fileName = path.split("/").pop().toLowerCase();
+  const file =
+    window.location.pathname
+      .split("/")
+      .pop()
+      .toLowerCase();
 
-  return fileName || "login.html";
+  return file || "login.html";
 }
 
 function initActiveSidebar() {
-  const current = getCurrentPage();
+  const currentPage = getCurrentPage();
 
   document
-    .querySelectorAll(
-      ".sidebar-nav .nav-link,.nav-menu .nav-link,.sidebar .nav-link",
-    )
+    .querySelectorAll(".sidebar a[href]")
     .forEach((link) => {
       const href = link.getAttribute("href");
 
-      if (!href) return;
+      if (!href || href.startsWith("#")) {
+        return;
+      }
 
       const target = href
         .split("/")
@@ -490,265 +699,377 @@ function initActiveSidebar() {
         .split("#")[0]
         .toLowerCase();
 
-      link.classList.toggle("active", target === current);
+      link.classList.toggle(
+        "active",
+        target === currentPage
+      );
     });
 }
+
 
 /* =========================================================
 6. SIDEBAR
 ========================================================= */
 
 function initSidebar() {
-  const sidebar = document.querySelector(".sidebar");
+  const sidebar =
+    document.querySelector(".sidebar");
 
-  const toggle = document.querySelector(".btn-mobile-toggle");
+  const toggle =
+    document.querySelector(
+      ".btn-mobile-toggle,#mobileToggle"
+    );
 
-  if (!sidebar) return;
+  if (!sidebar || !toggle) {
+    return;
+  }
 
-  let backdrop = document.querySelector(".sidebar-backdrop");
+  let backdrop =
+    document.querySelector(
+      ".sidebar-backdrop"
+    );
 
   if (!backdrop) {
     backdrop = document.createElement("div");
-    backdrop.className = "sidebar-backdrop";
+
+    backdrop.className =
+      "sidebar-backdrop";
+
+    backdrop.style.cssText = `
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.35);
+      z-index:1039;
+      display:none;
+    `;
+
     document.body.appendChild(backdrop);
   }
 
-  const close = () => {
-    sidebar.classList.remove("open");
-    backdrop.classList.remove("show");
+  const openSidebar = () => {
+    sidebar.classList.add("show");
+    document.body.classList.add("sidebar-open");
+    backdrop.style.display = "block";
   };
 
-  if (toggle) {
-    toggle.addEventListener("click", () => {
-      const isOpen = sidebar.classList.toggle("open");
+  const closeSidebar = () => {
+    sidebar.classList.remove("show");
+    document.body.classList.remove("sidebar-open");
+    backdrop.style.display = "none";
+  };
 
-      backdrop.classList.toggle("show", isOpen);
+  if (!toggle.dataset.amrashSidebarBound) {
+    toggle.dataset.amrashSidebarBound = "1";
+
+    toggle.addEventListener("click", (event) => {
+      event.preventDefault();
+
+      if (sidebar.classList.contains("show")) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
     });
   }
 
-  backdrop.addEventListener("click", close);
+  if (!backdrop.dataset.amrashSidebarBound) {
+    backdrop.dataset.amrashSidebarBound = "1";
 
-  document.querySelectorAll(".sidebar .nav-link").forEach((link) => {
-    link.addEventListener("click", close);
-  });
+    backdrop.addEventListener(
+      "click",
+      closeSidebar
+    );
+  }
+
+  sidebar
+    .querySelectorAll("a")
+    .forEach((link) => {
+      if (link.dataset.amrashSidebarLinkBound) {
+        return;
+      }
+
+      link.dataset.amrashSidebarLinkBound = "1";
+
+      link.addEventListener("click", () => {
+        if (
+          window.innerWidth <= 991
+        ) {
+          closeSidebar();
+        }
+      });
+    });
 }
+
 
 /* =========================================================
 7. USER
 ========================================================= */
 
 function getUserInitials(user) {
-  if (!user) return "A";
+  const name =
+    user?.name ||
+    user?.username ||
+    "أمل";
 
-  const name = user.name || user.username || "A";
+  const parts = String(name)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 
-  const words = String(name).trim().split(/\s+/).filter(Boolean);
-
-  if (words.length >= 2) {
-    return (
-      String(words[0][0] || "") + String(words[1][0] || "")
-    ).toUpperCase();
+  if (!parts.length) {
+    return "أ";
   }
 
-  return String(name[0] || "A").toUpperCase();
+  if (parts.length === 1) {
+    return parts[0].charAt(0);
+  }
+
+  return (
+    parts[0].charAt(0) +
+    parts[1].charAt(0)
+  );
 }
 
 function getRoleName(role) {
   const roles = {
     admin: "مدير النظام",
-    manager: "مدير",
+    administrator: "مدير النظام",
+    manager: "المدير",
     doctor: "طبيب",
-    reception: "الاستقبال",
-    accountant: "المحاسب",
-    pharmacist: "الصيدلي",
+    nurse: "ممرض",
+    receptionist: "موظف استقبال",
+    reception: "موظف استقبال",
+    accountant: "محاسب",
+    pharmacist: "صيدلي",
     laboratory: "المختبر",
+    staff: "موظف",
+    user: "مستخدم"
   };
 
-  return roles[role] || role || "مستخدم";
+  const normalized =
+    String(role || "")
+      .trim()
+      .toLowerCase();
+
+  return roles[normalized] || role || "مستخدم";
 }
 
 function loadCurrentUser() {
   const user = Auth.getUser();
 
-  if (!user) return;
+  if (!user) {
+    return;
+  }
 
-  document.querySelectorAll(".u-name,[data-user-name]").forEach((el) => {
-    el.textContent = user.name || user.username || "المستخدم";
-  });
+  const name =
+    user.name ||
+    user.username ||
+    "المستخدم";
 
-  document.querySelectorAll(".u-role,[data-user-role]").forEach((el) => {
-    el.textContent = getRoleName(user.role);
-  });
+  const role = getRoleName(user.role);
 
-  document.querySelectorAll(".avatar,[data-user-avatar]").forEach((el) => {
-    if (user.avatar) {
-      el.innerHTML = "";
+  document
+    .querySelectorAll(
+      ".u-name,#userName,[data-user-name]"
+    )
+    .forEach((element) => {
+      element.textContent = name;
+    });
 
-      const img = document.createElement("img");
+  document
+    .querySelectorAll(
+      ".u-role,#userRole,[data-user-role]"
+    )
+    .forEach((element) => {
+      element.textContent = role;
+    });
 
-      img.src = user.avatar;
-      img.alt = "Avatar";
+  document
+    .querySelectorAll(
+      ".avatar,#userAvatar,[data-user-avatar]"
+    )
+    .forEach((element) => {
+      if (user.avatar) {
+        element.innerHTML = "";
 
-      img.style.cssText = `
+        const img =
+          document.createElement("img");
+
+        img.src = user.avatar;
+        img.alt = "Avatar";
+
+        img.style.cssText = `
           width:100%;
           height:100%;
           object-fit:cover;
           border-radius:50%;
         `;
 
-      el.appendChild(img);
-    } else {
-      el.textContent = getUserInitials(user);
-    }
-  });
+        element.appendChild(img);
+      } else {
+        element.textContent =
+          getUserInitials(user);
+      }
+    });
 }
+
 
 /* =========================================================
 8. LOGOUT
 ========================================================= */
 
 function initLogout() {
-  const logoutButtons = [
-    document.getElementById("logoutBtn"),
-    document.getElementById("logoutBtn2"),
-  ].filter(Boolean);
+  const selectors = [
+    "#logoutBtn",
+    "#logoutBtn2",
+    "[data-logout]",
+    ".logout-btn",
+    ".btn-logout",
+    'a[href="logout"]',
+    'a[href="#logout"]'
+  ];
 
-  logoutButtons.forEach((button) => {
-    button.onclick = function (event) {
-      event.preventDefault();
+  const elements =
+    document.querySelectorAll(
+      selectors.join(",")
+    );
 
-      localStorage.removeItem("amrash_user");
-      localStorage.removeItem("amrash_token");
+  elements.forEach((button) => {
+    if (button.dataset.amrashLogoutBound) {
+      return;
+    }
 
-      sessionStorage.clear();
+    button.dataset.amrashLogoutBound = "1";
 
-      window.location.href = "login.html";
-    };
+    button.addEventListener(
+      "click",
+      (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        Auth.logout();
+      }
+    );
   });
 }
 
+
 /* =========================================================
-9. PROFILE
+9. PROFILE MENU
 ========================================================= */
 
 function initProfileLinks() {
-  const profileMenu = document.getElementById("profileMenu");
+  document
+    .querySelectorAll(
+      "#profileMenu," +
+      "[data-open-profile]," +
+      "#openProfile," +
+      ".profile-link"
+    )
+    .forEach((button) => {
+      if (button.dataset.amrashProfileBound) {
+        return;
+      }
 
-  if (!profileMenu) return;
+      button.dataset.amrashProfileBound = "1";
 
-  const profileButton =
-    document.querySelector("[data-profile-toggle]") ||
-    document.querySelector(".profile-button") ||
-    document.querySelector(".admin-profile");
+      const href =
+        button.getAttribute("href");
 
-  if (!profileButton) return;
+      if (
+        href &&
+        !href.startsWith("#") &&
+        href.endsWith("profile.html")
+      ) {
+        return;
+      }
 
-  profileButton.addEventListener("click", function (event) {
-    event.stopPropagation();
-
-    profileMenu.classList.toggle("show");
-  });
-
-  profileMenu.addEventListener("click", function (event) {
-    event.stopPropagation();
-  });
-
-  document.addEventListener("click", function () {
-    profileMenu.classList.remove("show");
-  });
+      button.addEventListener(
+        "click",
+        (event) => {
+          event.preventDefault();
+          openProfileModal();
+        }
+      );
+    });
 }
 
 function openProfileModal() {
   const user = Auth.getUser();
 
-  if (!user) return;
+  if (!user) {
+    Toast.warning(
+      "لا توجد بيانات للمستخدم الحالي."
+    );
+    return;
+  }
 
-  let modal = document.getElementById("amrashProfileModal");
+  let modal =
+    document.getElementById(
+      "quickProfileModal"
+    );
 
   if (!modal) {
     modal = document.createElement("div");
 
-    modal.id = "amrashProfileModal";
+    modal.id = "quickProfileModal";
     modal.className = "modal fade";
     modal.tabIndex = -1;
 
     modal.innerHTML = `
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-
+        <div class="modal-content border-0 shadow">
           <div class="modal-header">
-            <h5 class="modal-title">الملف الشخصي</h5>
-
+            <h5 class="modal-title">
+              الملف الشخصي
+            </h5>
             <button
               type="button"
               class="btn-close"
-              data-bs-dismiss="modal">
-            </button>
+              data-bs-dismiss="modal"
+            ></button>
           </div>
 
           <div class="modal-body">
-
             <div class="text-center mb-4">
-
               <div
-                id="profileModalAvatar"
+                id="quickProfileAvatar"
                 class="avatar mx-auto mb-3"
-                style="width:70px;height:70px;font-size:24px">
-              </div>
+                style="
+                  width:72px;
+                  height:72px;
+                  display:flex;
+                  align-items:center;
+                  justify-content:center;
+                "
+              ></div>
 
-              <h5 id="profileModalName"></h5>
-
+              <h5 id="quickProfileName"></h5>
               <div
-                id="profileModalRole"
-                class="text-muted">
-              </div>
-
+                id="quickProfileRole"
+                class="text-muted"
+              ></div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">
-                اسم المستخدم
-              </label>
-
-              <input
-                id="profileModalUsername"
-                class="form-control"
-                readonly>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">
-                البريد الإلكتروني
-              </label>
-
-              <input
-                id="profileModalEmail"
-                class="form-control"
-                readonly>
+              <strong>البريد الإلكتروني:</strong>
+              <div id="quickProfileEmail"></div>
             </div>
 
             <div>
-              <label class="form-label">
-                الهاتف
-              </label>
-
-              <input
-                id="profileModalPhone"
-                class="form-control"
-                readonly>
+              <strong>الهاتف:</strong>
+              <div id="quickProfilePhone"></div>
             </div>
-
           </div>
 
           <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-soft"
-              data-bs-dismiss="modal">
-              إغلاق
-            </button>
+            <a
+              href="profile.html"
+              class="btn btn-primary"
+            >
+              فتح الملف الكامل
+            </a>
           </div>
-
         </div>
       </div>
     `;
@@ -756,315 +1077,579 @@ function openProfileModal() {
     document.body.appendChild(modal);
   }
 
-  const avatar = document.getElementById("profileModalAvatar");
+  Helpers.setText(
+    "quickProfileName",
+    user.name || user.username || "المستخدم"
+  );
 
-  const name = document.getElementById("profileModalName");
+  Helpers.setText(
+    "quickProfileRole",
+    getRoleName(user.role)
+  );
 
-  const role = document.getElementById("profileModalRole");
+  Helpers.setText(
+    "quickProfileEmail",
+    user.email || "—"
+  );
 
-  const username = document.getElementById("profileModalUsername");
+  Helpers.setText(
+    "quickProfilePhone",
+    user.phone || "—"
+  );
 
-  const email = document.getElementById("profileModalEmail");
-
-  const phone = document.getElementById("profileModalPhone");
+  const avatar =
+    document.getElementById(
+      "quickProfileAvatar"
+    );
 
   if (avatar) {
-    avatar.textContent = getUserInitials(user);
+    avatar.innerHTML = "";
+
+    if (user.avatar) {
+      const img =
+        document.createElement("img");
+
+      img.src = user.avatar;
+      img.alt = "Avatar";
+
+      img.style.cssText = `
+        width:100%;
+        height:100%;
+        object-fit:cover;
+        border-radius:50%;
+      `;
+
+      avatar.appendChild(img);
+    } else {
+      avatar.textContent =
+        getUserInitials(user);
+    }
   }
 
-  if (name) {
-    name.textContent = user.name || user.username || "المستخدم";
-  }
-
-  if (role) {
-    role.textContent = getRoleName(user.role);
-  }
-
-  if (username) {
-    username.value = user.username || "";
-  }
-
-  if (email) {
-    email.value = user.email || "";
-  }
-
-  if (phone) {
-    phone.value = user.phone || "";
-  }
-
-  showModal("amrashProfileModal");
+  showModal("quickProfileModal");
 }
+
 
 /* =========================================================
 10. CURRENT DATE
 ========================================================= */
 
 function initCurrentDate() {
-  const formatted = new Date().toLocaleDateString("ar-EG", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const date = new Date();
+
+  const formatted =
+    date.toLocaleDateString("ar-EG", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
 
   document
-    .querySelectorAll("[data-current-date],#currentDate")
-    .forEach((el) => {
-      el.textContent = formatted;
+    .querySelectorAll(
+      "[data-current-date],#currentDate"
+    )
+    .forEach((element) => {
+      element.textContent = formatted;
     });
 }
+
 
 /* =========================================================
 11. NOTIFICATIONS
 ========================================================= */
 
 const Notifications = {
+  data: [],
+
   async load() {
-    try {
-      const result = await API.get("/notifications");
-
-      const items = Array.isArray(result)
-        ? result
-        : result?.notifications || result?.data || [];
-
-      this.render(items);
-    } catch {
-      const container = document.querySelector(
-        "#notificationsList,[data-notifications]",
+    const container =
+      document.querySelector(
+        "#notificationsList," +
+        "#notificationList," +
+        "[data-notifications]"
       );
 
-      if (container) {
-        container.innerHTML = `
-          <div class="dropdown-item text-muted">
-            تعذر تحميل التنبيهات
-          </div>
-        `;
-      }
-    }
-  },
-
-  render(items) {
-    const container = document.querySelector(
-      "#notificationsList,[data-notifications]",
-    );
-
-    if (!container) return;
-
-    if (!items.length) {
-      container.innerHTML = `
-        <div class="dropdown-item text-muted text-center">
-          لا توجد تنبيهات
-        </div>
-      `;
+    if (!container) {
       return;
     }
 
-    container.innerHTML = "";
+    try {
+      const result =
+        await API.get("/notifications");
 
-    items.forEach((notification) => {
-      const item = document.createElement("div");
+      this.data =
+        Array.isArray(result)
+          ? result
+          : result?.notifications ||
+            result?.data ||
+            [];
 
-      item.className = "dropdown-item notification-item";
+      this.render(container);
+      this.updateCount();
+    } catch (error) {
+      console.error(
+        "Notifications error:",
+        error
+      );
 
-      if (!notification.is_read) {
-        item.style.background = "#f4f7fb";
-      }
-
-      item.innerHTML = `
-        <div class="fw-bold">
-          ${Helpers.escapeHTML(notification.title || "تنبيه")}
+      container.innerHTML = `
+        <div class="text-center text-muted p-3">
+          تعذر تحميل التنبيهات.
         </div>
-
-        <small class="text-muted">
-          ${Helpers.escapeHTML(notification.message || "")}
-        </small>
       `;
 
-      item.addEventListener("click", async () => {
-        if (notification.id && !notification.is_read) {
-          try {
-            await API.put(`/notifications/${notification.id}/read`, {});
-          } catch {}
-
-          item.style.background = "";
-          item.classList.add("read");
-        }
-      });
-
-      container.appendChild(item);
-    });
+      this.updateCount(0);
+    }
   },
+
+  updateCount(forceCount = null) {
+    const count =
+      forceCount !== null
+        ? forceCount
+        : this.data.filter(
+            (item) => !item.is_read
+          ).length;
+
+    document
+      .querySelectorAll(
+        "#notificationCount," +
+        "#notificationsCount," +
+        "[data-notification-count]"
+      )
+      .forEach((element) => {
+        element.textContent = count;
+
+        element.style.display =
+          count > 0
+            ? ""
+            : "none";
+      });
+  },
+
+  render(container) {
+    if (!this.data.length) {
+      container.innerHTML = `
+        <div class="text-center text-muted p-3">
+          لا توجد تنبيهات جديدة.
+        </div>
+      `;
+
+      return;
+    }
+
+    container.innerHTML = this.data
+      .map((item) => {
+        const id = item.id;
+
+        return `
+          <button
+            type="button"
+            class="dropdown-item notification-item ${
+              item.is_read ? "" : "fw-semibold"
+            }"
+            data-notification-id="${Helpers.escapeHTML(id)}"
+          >
+            <div>
+              ${Helpers.escapeHTML(
+                item.title ||
+                item.message ||
+                "تنبيه"
+              )}
+            </div>
+
+            ${
+              item.created_at
+                ? `
+                  <small class="text-muted">
+                    ${Helpers.formatDate(
+                      item.created_at
+                    )}
+                  </small>
+                `
+                : ""
+            }
+          </button>
+        `;
+      })
+      .join("");
+
+    container
+      .querySelectorAll(
+        "[data-notification-id]"
+      )
+      .forEach((item) => {
+        item.addEventListener(
+          "click",
+          async () => {
+            const id =
+              item.dataset.notificationId;
+
+            if (!id) {
+              return;
+            }
+
+            try {
+              await API.put(
+                `/notifications/${encodeURIComponent(
+                  id
+                )}/read`
+              );
+
+              const notification =
+                this.data.find(
+                  (entry) =>
+                    String(entry.id) ===
+                    String(id)
+                );
+
+              if (notification) {
+                notification.is_read = 1;
+              }
+
+              this.updateCount();
+              item.classList.remove(
+                "fw-semibold"
+              );
+            } catch (error) {
+              console.error(
+                "Notification read error:",
+                error
+              );
+            }
+          }
+        );
+      });
+  }
 };
 
 function initNotifications() {
-  // Bootstrap handles the notification dropdown.
-  // No custom JavaScript is required here.
+  Notifications.load();
 }
+
 
 /* =========================================================
 12. LOGIN
 ========================================================= */
 
 function initLoginPage() {
-  const form = document.getElementById("loginForm");
+  if (!Auth.isLoginPage()) {
+    return;
+  }
 
-  if (!form) return;
+  const form =
+    document.getElementById("loginForm");
 
-  const email = document.getElementById("email");
+  if (!form) {
+    return;
+  }
 
-  const password = document.getElementById("password");
+console.log("LOGIN FORM:", form);
+  if (form.dataset.amrashLoginBound) {
+    return;
+  }
 
-  const remember = document.getElementById("rememberMe");
+  form.dataset.amrashLoginBound = "1";
 
-  const button = document.getElementById("loginBtn");
+  const identifier =
+    document.getElementById("email");
 
-  const spinner = document.getElementById("loginSpinner");
+  const password =
+    document.getElementById("password");
 
-  const alert = document.getElementById("loginAlert");
+  const remember =
+    document.getElementById("rememberMe");
 
-  const alertText = document.getElementById("loginAlertText");
+  const button =
+    document.getElementById("loginBtn");
 
-  const showError = (message) => {
+  const spinner =
+    document.getElementById("loginSpinner");
+
+  const alert =
+    document.getElementById("loginAlert");
+
+  const alertText =
+    document.getElementById(
+      "loginAlertText"
+    );
+
+  const showAlert = (message) => {
+    if (alertText) {
+      alertText.textContent = message;
+    }
+
     if (alert) {
       alert.classList.remove("d-none");
-
-      if (alertText) {
-        alertText.textContent = message;
-      }
+    } else {
+      Toast.error(message);
     }
-
-    Toast.error(message);
   };
 
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
+  const hideAlert = () => {
+    alert?.classList.add("d-none");
+  };
 
-    if (!email?.value.trim() || !password?.value) {
-      showError("يرجى إدخال البريد الإلكتروني وكلمة المرور.");
-      return;
-    }
+  form.addEventListener(
+    "submit",
+    async (event) => {
+      event.preventDefault();
 
-    button?.setAttribute("disabled", "disabled");
+      hideAlert();
 
-    spinner?.classList.remove("d-none");
+      const loginValue =
+        identifier?.value.trim() || "";
 
-    try {
-      const result = await API.post("/auth/login", {
-        email: email.value.trim(),
-        password: password.value,
-      });
+      const passwordValue =
+        password?.value || "";
 
-      const token = result?.token;
-
-      const user = result?.user;
-
-      if (!token) {
-        throw new Error("بيانات تسجيل الدخول غير صحيحة.");
+      if (!loginValue) {
+        showAlert(
+          "يرجى إدخال البريد الإلكتروني أو اسم المستخدم."
+        );
+        identifier?.focus();
+        return;
       }
 
-      Auth.setSession(token, user);
-
-      if (remember?.checked) {
-        localStorage.setItem("amrash_remember", "1");
-      } else {
-        localStorage.removeItem("amrash_remember");
+      if (!passwordValue) {
+        showAlert(
+          "يرجى إدخال كلمة المرور."
+        );
+        password?.focus();
+        return;
       }
 
-      window.location.href = "dashboard.html";
-    } catch (error) {
-      showError(error.message || "فشل تسجيل الدخول.");
-    } finally {
-      button?.removeAttribute("disabled");
+      const originalText =
+        button?.innerHTML || "";
 
-      spinner?.classList.add("d-none");
+      try {
+        if (button) {
+          button.disabled = true;
+          button.innerHTML = `
+            <span
+              class="spinner-border spinner-border-sm me-2"
+            ></span>
+            جاري تسجيل الدخول...
+          `;
+        }
+
+        if (spinner) {
+          spinner.classList.remove("d-none");
+        }
+
+        const result =
+          await API.post(
+            "/auth/login",
+            {
+              email: loginValue,
+              username: loginValue,
+              password: passwordValue
+            }
+          );
+
+        const token =
+          result?.token ||
+          result?.accessToken ||
+          result?.data?.token;
+
+        const user =
+          result?.user ||
+          result?.data?.user;
+
+        if (!token) {
+          throw new Error(
+            "لم يتم استلام رمز تسجيل الدخول من الخادم."
+          );
+        }
+
+        Auth.setSession(
+          token,
+          user || {
+            email: loginValue
+          }
+        );
+
+        if (remember?.checked) {
+          localStorage.setItem(
+            "amrash_remember",
+            "1"
+          );
+        } else {
+          localStorage.removeItem(
+            "amrash_remember"
+          );
+        }
+
+        window.location.replace(
+          "dashboard.html"
+        );
+      } catch (error) {
+        console.error(
+          "Login error:",
+          error
+        );
+
+        showAlert(
+          error.message ||
+          "تعذر تسجيل الدخول."
+        );
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML =
+            originalText;
+        }
+
+        if (spinner) {
+          spinner.classList.add("d-none");
+        }
+      }
     }
-  });
+  );
 
-   const toggle = document.getElementById("togglePass");
-   const toggleIcon = document.getElementById("togglePassIcon");
+  const togglePass =
+    document.getElementById(
+      "togglePass"
+    );
 
-   toggle?.addEventListener("click", () => {
-     if (!password) return;
+  const togglePassIcon =
+    document.getElementById(
+      "togglePassIcon"
+    );
 
-     if (password.type === "password") {
-       password.type = "text";
+  if (
+    togglePass &&
+    password &&
+    !togglePass.dataset.amrashBound
+  ) {
+    togglePass.dataset.amrashBound = "1";
 
-       toggleIcon?.classList.remove("bi-eye");
-       toggleIcon?.classList.add("bi-eye-slash");
-     } else {
-       password.type = "password";
+    togglePass.addEventListener(
+      "click",
+      (event) => {
+        event.preventDefault();
 
-       toggleIcon?.classList.remove("bi-eye-slash");
-       toggleIcon?.classList.add("bi-eye");
-     }
-   });
+        const visible =
+          password.type === "text";
+
+        password.type =
+          visible
+            ? "password"
+            : "text";
+
+        if (togglePassIcon) {
+          togglePassIcon.className =
+            visible
+              ? "bi bi-eye"
+              : "bi bi-eye-slash";
+        }
+      }
+    );
+  }
 }
+
 
 /* =========================================================
 13. GENERIC MODAL
 ========================================================= */
 
 function showModal(id) {
-  const modal = document.getElementById(id);
+  const modal =
+    typeof id === "string"
+      ? document.getElementById(id)
+      : id;
 
-  if (!modal) return;
+  if (!modal) {
+    return;
+  }
 
-  if (window.bootstrap && window.bootstrap.Modal) {
-    try {
-      bootstrap.Modal.getOrCreateInstance(modal).show();
+  if (
+    window.bootstrap &&
+    window.bootstrap.Modal
+  ) {
+    const instance =
+      bootstrap.Modal.getOrCreateInstance(
+        modal
+      );
 
-      return;
-    } catch (error) {
-      console.error("Bootstrap modal error:", error);
-    }
+    instance.show();
+    return;
   }
 
   modal.style.display = "block";
+  modal.classList.add("show");
   modal.removeAttribute("aria-hidden");
   modal.setAttribute("aria-modal", "true");
-
-  modal.classList.add("show");
-
   document.body.classList.add("modal-open");
 
-  if (!document.querySelector(".amrash-modal-backdrop")) {
-    const backdrop = document.createElement("div");
+  let backdrop =
+    document.querySelector(
+      `.amrash-modal-backdrop[data-modal="${modal.id}"]`
+    );
 
-    backdrop.className = "modal-backdrop fade show amrash-modal-backdrop";
+  if (!backdrop) {
+    backdrop =
+      document.createElement("div");
 
-    backdrop.addEventListener("click", () => hideModal(id));
+    backdrop.className =
+      "amrash-modal-backdrop modal-backdrop fade show";
 
-    document.body.appendChild(backdrop);
+    backdrop.dataset.modal =
+      modal.id;
+
+    document.body.appendChild(
+      backdrop
+    );
+
+    backdrop.addEventListener(
+      "click",
+      () => hideModal(modal.id)
+    );
   }
 }
 
 function hideModal(id) {
-  const modal = document.getElementById(id);
+  const modal =
+    typeof id === "string"
+      ? document.getElementById(id)
+      : id;
 
-  if (!modal) return;
+  if (!modal) {
+    return;
+  }
 
-  if (window.bootstrap && window.bootstrap.Modal) {
-    try {
-      bootstrap.Modal.getOrCreateInstance(modal).hide();
+  if (
+    window.bootstrap &&
+    window.bootstrap.Modal
+  ) {
+    const instance =
+      bootstrap.Modal.getInstance(
+        modal
+      );
 
+    if (instance) {
+      instance.hide();
       return;
-    } catch (error) {
-      console.error("Bootstrap hide modal error:", error);
     }
   }
 
+  modal.style.display = "none";
   modal.classList.remove("show");
-  modal.setAttribute("aria-hidden", "true");
-
+  modal.setAttribute(
+    "aria-hidden",
+    "true"
+  );
   modal.removeAttribute("aria-modal");
 
-  modal.style.display = "none";
-
-  document.body.classList.remove("modal-open");
+  document.body.classList.remove(
+    "modal-open"
+  );
 
   document
-    .querySelectorAll(".amrash-modal-backdrop")
-    .forEach((backdrop) => backdrop.remove());
+    .querySelectorAll(
+      `.amrash-modal-backdrop[data-modal="${modal.id}"]`
+    )
+    .forEach((item) => item.remove());
 }
 
 /* =========================================================
@@ -1078,13 +1663,11 @@ async function loadDepartments() {
   const grid = document.getElementById("departmentsGrid");
   const table = document.getElementById("departmentsTableBody");
 
-  // حتى لو كنا في صفحة الأطباء أو المرضى أو الخدمات
-  // وما عندنا Grid/Table للأقسام، نحتاج تحميل الأقسام للقوائم المنسدلة
-  const hasDepartmentSelects = document.querySelector(
-    "#filterDepartment, #dDepartment, #pDepartment, #sDepartment, #aDepartment, #reportDepartment",
+  const selects = document.querySelectorAll(
+    "#filterDepartment,#dDepartment,#pDepartment,#sDepartment,#aDepartment,#reportDepartment"
   );
 
-  if (!grid && !table && !hasDepartmentSelects) {
+  if (!grid && !table && !selects.length) {
     return;
   }
 
@@ -1095,231 +1678,391 @@ async function loadDepartments() {
       ? result
       : result?.departments || result?.data || [];
 
-    // عرض الأقسام إذا كنا في صفحة الأقسام
     renderDepartments();
-
-    // تعبئة جميع قوائم الأقسام
     populateDepartmentSelects();
   } catch (error) {
-    console.error("Load departments error:", error);
+    console.error("Departments error:", error);
     Toast.error(error.message || "تعذر تحميل الأقسام.");
   }
 }
 
 function renderDepartments() {
   const grid = document.getElementById("departmentsGrid");
-
   const table = document.getElementById("departmentsTableBody");
 
-  const search = Helpers.normalize(Helpers.getValue("departmentSearch"));
+  const search = Helpers.normalize(
+    Helpers.getValue("departmentSearch")
+  );
 
-  const status = Helpers.normalize(Helpers.getValue("filterStatus"));
+  const statusFilter = Helpers.normalize(
+    Helpers.getValue("filterStatus")
+  );
 
-  const list = departmentsData.filter((item) => {
-    const name = item.name || item.department_name || "";
+  const filtered = departmentsData.filter((item) => {
+    const name =
+      item.name ||
+      item.department_name ||
+      "";
 
-    return (
-      (!search || Helpers.normalize(name).includes(search)) &&
-      (!status || status === "all" || Helpers.normalize(item.status) === status)
-    );
+    const status = Helpers.normalize(item.status);
+
+    const matchesSearch =
+      !search ||
+      Helpers.normalize(name).includes(search);
+
+    const matchesStatus =
+      !statusFilter ||
+      status === statusFilter;
+
+    return matchesSearch && matchesStatus;
   });
 
-  Helpers.setText("departmentCount", list.length);
+  Helpers.setText(
+    "departmentCount",
+    filtered.length
+  );
 
   if (grid) {
-    grid.innerHTML = "";
-
-    list.forEach((department) => {
-      const id = department.id;
-
-      const name = department.name || department.department_name || "—";
-
-      const icon = department.icon || "bi-hospital";
-
-      grid.insertAdjacentHTML(
-        "beforeend",
-        `
-        <div class="col-md-6 col-xl-3">
-          <div class="card h-100 department-card">
-            <div class="card-body">
-
-              <div class="d-flex justify-content-between align-items-start mb-3">
-
-                <div class="department-icon">
-                  <i class="bi ${Helpers.escapeHTML(icon)}"></i>
-                </div>
-
-                ${Helpers.badge(department.status)}
-
-              </div>
-
-              <h5 class="mb-2">
-                ${Helpers.escapeHTML(name)}
-              </h5>
-
-              <p class="text-muted small">
-                ${Helpers.escapeHTML(department.description || "لا يوجد وصف")}
-              </p>
-
-              <button
-                class="btn btn-outline-amrash btn-sm"
-                data-view-department="${id}">
-                التفاصيل
-              </button>
-
-            </div>
+    if (!filtered.length) {
+      grid.innerHTML = `
+        <div class="col-12">
+          <div class="text-center text-muted py-5">
+            لا توجد أقسام مطابقة للبحث.
           </div>
         </div>
-        `,
-      );
-    });
-
-    if (!list.length) {
-      grid.innerHTML = `
-        <div class="col-12 text-center text-muted py-5">
-          لا توجد أقسام
-        </div>
       `;
+    } else {
+      grid.innerHTML = filtered
+        .map((department) => {
+          const id = department.id;
+
+          const name =
+            department.name ||
+            department.department_name ||
+            "قسم";
+
+          const icon =
+            department.icon ||
+            "bi-hospital";
+
+          return `
+            <div class="col-md-6 col-xl-4">
+              <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+
+                    <div class="rounded-circle p-3 bg-light">
+                      <i class="bi ${Helpers.escapeHTML(
+                        icon
+                      )} fs-4"></i>
+                    </div>
+
+                    ${Helpers.badge(
+                      department.status
+                    )}
+
+                  </div>
+
+                  <h5 class="mb-2">
+                    ${Helpers.escapeHTML(name)}
+                  </h5>
+
+                  <p class="text-muted small">
+                    ${Helpers.escapeHTML(
+                      department.description ||
+                      "لا يوجد وصف"
+                    )}
+                  </p>
+
+                  <div class="d-flex gap-2 flex-wrap">
+
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-primary"
+                      data-view-department="${Helpers.escapeHTML(
+                        id
+                      )}"
+                    >
+                      <i class="bi bi-eye me-1"></i>
+                      التفاصيل
+                    </button>
+
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      data-edit-department="${Helpers.escapeHTML(
+                        id
+                      )}"
+                    >
+                      <i class="bi bi-pencil me-1"></i>
+                      تعديل
+                    </button>
+
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      data-delete-department="${Helpers.escapeHTML(
+                        id
+                      )}"
+                    >
+                      <i class="bi bi-trash me-1"></i>
+                      حذف
+                    </button>
+
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
     }
   }
 
   if (table) {
-    table.innerHTML = "";
+    table.innerHTML = filtered.length
+      ? filtered
+          .map((department, index) => {
+            const name =
+              department.name ||
+              department.department_name ||
+              "—";
 
-    list.forEach((department, index) => {
-      const name = department.name || department.department_name || "—";
+            return `
+              <tr>
 
-      table.insertAdjacentHTML(
-        "beforeend",
-        `
-          <tr>
-            <td>${index + 1}</td>
+                <td>
+                  ${index + 1}
+                </td>
 
-            <td>
-              ${Helpers.escapeHTML(name)}
-            </td>
+                <td>
+                  ${Helpers.escapeHTML(name)}
+                </td>
 
-            <td>
-              ${Helpers.escapeHTML(department.description || "—")}
-            </td>
+                <td>
+                  ${Helpers.badge(
+                    department.status
+                  )}
+                </td>
 
-            <td>
-              ${Helpers.badge(department.status)}
-            </td>
+                <td>
+                  ${Helpers.escapeHTML(
+                    department.description ||
+                    "—"
+                  )}
+                </td>
 
-            <td>
-              <div class="d-flex gap-1">
+                <td>
+                  <div class="d-flex gap-1">
 
-                <button
-                  class="btn btn-sm btn-outline-primary"
-                  data-edit-department="${department.id}">
-                  <i class="bi bi-pencil"></i>
-                </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      data-edit-department="${Helpers.escapeHTML(
+                        department.id
+                      )}"
+                    >
+                      <i class="bi bi-pencil"></i>
+                    </button>
 
-                <button
-                  class="btn btn-sm btn-outline-danger"
-                  data-delete-department="${department.id}">
-                  <i class="bi bi-trash"></i>
-                </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      data-delete-department="${Helpers.escapeHTML(
+                        department.id
+                      )}"
+                    >
+                      <i class="bi bi-trash"></i>
+                    </button>
 
-              </div>
-            </td>
-          </tr>
-          `,
-      );
-    });
+                  </div>
+                </td>
+
+              </tr>
+            `;
+          })
+          .join("")
+      : `
+        <tr>
+          <td
+            colspan="10"
+            class="text-center text-muted py-4"
+          >
+            لا توجد بيانات.
+          </td>
+        </tr>
+      `;
   }
 }
 
 function populateDepartmentSelects() {
-  document
-    .querySelectorAll(
-      "#filterDepartment,#dDepartment,#pDepartment,#sDepartment,#aDepartment,#reportDepartment",
-    )
-    .forEach((select) => {
-      const current = select.value;
+  const selectors = [
+    "filterDepartment",
+    "dDepartment",
+    "pDepartment",
+    "sDepartment",
+    "aDepartment",
+    "reportDepartment"
+  ];
 
-      const firstOption = select.querySelector("option");
+  selectors.forEach((id) => {
+    const select = document.getElementById(id);
 
-      select.innerHTML = "";
+    if (!select) {
+      return;
+    }
 
-      if (firstOption) {
-        select.appendChild(firstOption.cloneNode(true));
-      } else {
-        select.innerHTML = `<option value="">اختر القسم</option>`;
-      }
+    const currentValue = select.value;
 
-      departmentsData.forEach((department) => {
-        const option = document.createElement("option");
+    const firstOption = select.options[0];
 
-        option.value = department.id;
+    const placeholder = firstOption
+      ? firstOption.textContent
+      : "اختر القسم";
 
-        option.textContent =
-          department.name || department.department_name || "";
+    select.innerHTML = `
+      <option value="">
+        ${Helpers.escapeHTML(placeholder)}
+      </option>
+    `;
 
-        select.appendChild(option);
-      });
+    departmentsData.forEach((department) => {
+      const option = document.createElement("option");
 
-      if (current) {
-        select.value = current;
-      }
+      option.value = department.id;
+
+      option.textContent =
+        department.name ||
+        department.department_name ||
+        "قسم";
+
+      select.appendChild(option);
     });
+
+    if (currentValue) {
+      select.value = currentValue;
+    }
+  });
 }
 
 function openDepartmentForm(department = null) {
-  editingDepartmentId = department?.id || null;
+  editingDepartmentId =
+    department?.id || null;
 
-  Helpers.setValue("departmentId", department?.id || "");
+  Helpers.setValue(
+    "departmentId",
+    department?.id || ""
+  );
 
   Helpers.setValue(
     "depName",
-    department?.name || department?.department_name || "",
+    department?.name ||
+    department?.department_name ||
+    ""
   );
 
-  Helpers.setValue("depStatus", department?.status || "Active");
+  Helpers.setValue(
+    "depStatus",
+    department?.status ||
+    "Active"
+  );
 
-  Helpers.setValue("depDescription", department?.description || "");
+  Helpers.setValue(
+    "depDescription",
+    department?.description ||
+    ""
+  );
 
-  Helpers.setValue("depIcon", department?.icon || "bi-hospital");
+  Helpers.setValue(
+    "depIcon",
+    department?.icon ||
+    "bi-hospital"
+  );
+
+  const title =
+    document.getElementById(
+      "departmentModalLabel"
+    );
+
+  if (title) {
+    title.textContent = department
+      ? "تعديل القسم"
+      : "إضافة قسم";
+  }
 
   showModal("departmentModal");
 }
 
 async function saveDepartment() {
-  const name = Helpers.getValue("depName");
+  const name = Helpers.getValue("depName").trim();
+
+  const status =
+    Helpers.getValue("depStatus") ||
+    "Active";
+
+  const description =
+    Helpers.getValue("depDescription").trim();
+
+  const icon =
+    Helpers.getValue("depIcon").trim() ||
+    "bi-hospital";
 
   if (!name) {
-    Toast.warning("يرجى إدخال اسم القسم.");
+    Toast.error("اسم القسم مطلوب.");
     return;
   }
 
   const body = {
     name,
     department_name: name,
-    status: Helpers.getValue("depStatus") || "Active",
-    description: Helpers.getValue("depDescription"),
-    icon: Helpers.getValue("depIcon") || "bi-hospital",
+    status,
+    description,
+    icon
   };
 
   try {
     if (editingDepartmentId) {
-      await API.put(`/departments/${editingDepartmentId}`, body);
+      await API.put(
+        `/departments/${encodeURIComponent(
+          editingDepartmentId
+        )}`,
+        body
+      );
 
-      Toast.success("تم تحديث القسم بنجاح.");
+      Toast.success(
+        "تم تحديث بيانات القسم بنجاح."
+      );
     } else {
-      await API.post("/departments", body);
+      await API.post(
+        "/departments",
+        body
+      );
 
-      Toast.success("تمت إضافة القسم بنجاح.");
+      Toast.success(
+        "تمت إضافة القسم بنجاح."
+      );
     }
 
     hideModal("departmentModal");
 
+    editingDepartmentId = null;
+
     await loadDepartments();
+
   } catch (error) {
-    Toast.error(error.message);
+    console.error(
+      "Save department error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر حفظ بيانات القسم."
+    );
   }
 }
-
 /* =========================================================
 15. DOCTORS
 ========================================================= */
@@ -1328,249 +2071,579 @@ let doctorsData = [];
 let editingDoctorId = null;
 
 async function loadDoctors() {
-  const hasDoctorTable = document.getElementById("doctorsTableBody");
-  const hasDoctorSelect = document.querySelector("#aDoctor, #filterDoctor");
+  const table =
+    document.getElementById(
+      "doctorsTableBody"
+    );
 
-  if (!hasDoctorTable && !hasDoctorSelect) {
+  const selects =
+    document.querySelectorAll(
+      "#aDoctor,#filterDoctor"
+    );
+
+  if (
+    !table &&
+    !selects.length
+  ) {
     return;
   }
 
   try {
-    const result = await API.get("/doctors");
+    const result =
+      await API.get("/doctors");
 
-    doctorsData = Array.isArray(result)
-      ? result
-      : result?.doctors || result?.data || [];
+    doctorsData =
+      Array.isArray(result)
+        ? result
+        : result?.doctors ||
+          result?.data ||
+          [];
 
     renderDoctors();
     populateDoctorSelect();
   } catch (error) {
-    console.error("Load doctors error:", error);
-    Toast.error(error.message || "تعذر تحميل الأطباء.");
+    console.error(
+      "Doctors error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر تحميل الأطباء."
+    );
   }
 }
 
 function renderDoctors() {
-  const table = document.getElementById("doctorsTableBody");
-
-  if (!table) return;
-
-  const search = Helpers.normalize(Helpers.getValue("doctorSearch"));
-
-  const department = Helpers.getValue("filterDepartment");
-
-  const specialty = Helpers.normalize(Helpers.getValue("filterSpecialty"));
-
-  const status = Helpers.normalize(Helpers.getValue("filterStatus"));
-
-  const list = doctorsData.filter((doctor) => {
-    const name = doctor.name || doctor.doctor_name || "";
-
-    return (
-      (!search ||
-        Helpers.normalize(name).includes(search) ||
-        Helpers.normalize(doctor.phone).includes(search)) &&
-      (!department ||
-        String(doctor.department_id || "") === String(department)) &&
-      (!specialty || Helpers.normalize(doctor.specialty).includes(specialty)) &&
-      (!status ||
-        status === "all" ||
-        Helpers.normalize(doctor.status) === status)
+  const table =
+    document.getElementById(
+      "doctorsTableBody"
     );
-  });
 
-  Helpers.setText("doctorCount", list.length);
+  const search =
+    Helpers.normalize(
+      Helpers.getValue(
+        "doctorSearch"
+      )
+    );
 
-  Helpers.setText("doctorTotal", doctorsData.length);
+  const department =
+    Helpers.getValue(
+      "filterDepartment"
+    );
+
+  const specialty =
+    Helpers.normalize(
+      Helpers.getValue(
+        "filterSpecialty"
+      )
+    );
+
+  const status =
+    Helpers.normalize(
+      Helpers.getValue(
+        "filterStatus"
+      )
+    );
+
+  const filtered =
+    doctorsData.filter(
+      (doctor) => {
+        const name =
+          doctor.name ||
+          doctor.doctor_name ||
+          "";
+
+        const doctorDepartment =
+          String(
+            doctor.department_id ||
+            ""
+          );
+
+        const doctorSpecialty =
+          doctor.specialty ||
+          "";
+
+        const doctorStatus =
+          Helpers.normalize(
+            doctor.status
+          );
+
+        return (
+          (
+            !search ||
+            Helpers.normalize(name).includes(
+              search
+            ) ||
+            Helpers.normalize(
+              doctorSpecialty
+            ).includes(search)
+          ) &&
+          (
+            !department ||
+            doctorDepartment ===
+              String(department) ||
+            String(
+              doctor.department?.id ||
+              ""
+            ) === String(department)
+          ) &&
+          (
+            !specialty ||
+            Helpers.normalize(
+              doctorSpecialty
+            ) === specialty
+          ) &&
+          (
+            !status ||
+            doctorStatus === status
+          )
+        );
+      }
+    );
+
+  Helpers.setText(
+    "doctorCount",
+    filtered.length
+  );
+
+  Helpers.setText(
+    "doctorTotal",
+    doctorsData.length
+  );
 
   Helpers.setText(
     "doctorActive",
-    doctorsData.filter((d) => Helpers.normalize(d.status) === "active").length,
+    doctorsData.filter(
+      (item) =>
+        Helpers.normalize(
+          item.status
+        ) === "active"
+    ).length
   );
 
   Helpers.setText(
     "doctorLeave",
-    doctorsData.filter((d) =>
-      ["leave", "on_leave"].includes(Helpers.normalize(d.status)),
-    ).length,
+    doctorsData.filter(
+      (item) =>
+        ["leave", "on_leave"].includes(
+          Helpers.normalize(
+            item.status
+          )
+        )
+    ).length
   );
 
   Helpers.setText(
     "doctorDepartments",
-    new Set(doctorsData.map((d) => d.department_id).filter(Boolean)).size,
+    new Set(
+      doctorsData
+        .map(
+          (item) =>
+            item.department_id ||
+            item.department?.id
+        )
+        .filter(Boolean)
+    ).size
   );
 
-  table.innerHTML = "";
+  if (!table) {
+    return;
+  }
 
-  list.forEach((doctor, index) => {
-    const name = doctor.name || doctor.doctor_name || "—";
+  table.innerHTML = filtered.length
+    ? filtered
+        .map((doctor, index) => {
+          const name =
+            doctor.name ||
+            doctor.doctor_name ||
+            "—";
 
-    table.insertAdjacentHTML(
-      "beforeend",
-      `
-        <tr>
+          const specialty =
+            doctor.specialty ||
+            "—";
 
-          <td>${index + 1}</td>
+          const departmentName =
+            doctor.department_name ||
+            doctor.department?.name ||
+            "—";
 
-          <td>
-            <strong>
-              ${Helpers.escapeHTML(name)}
-            </strong>
-          </td>
+          const phone =
+            doctor.phone ||
+            "—";
 
-          <td>
-            ${Helpers.escapeHTML(doctor.specialty || "—")}
-          </td>
+          const fee =
+            doctor.consultation_fee ??
+            doctor.fee ??
+            0;
 
-          <td>
-            ${Helpers.escapeHTML(
-              doctor.department_name || doctor.department || "—",
-            )}
-          </td>
+          return `
+            <tr>
+              <td>${index + 1}</td>
 
-          <td>
-            ${Helpers.escapeHTML(doctor.phone || "—")}
-          </td>
+              <td>
+                ${Helpers.escapeHTML(name)}
+              </td>
 
-          <td>
-            ${Helpers.money(doctor.consultation_fee || doctor.fee || 0)}
-          </td>
+              <td>
+                ${Helpers.escapeHTML(specialty)}
+              </td>
 
-          <td>
-            ${Helpers.badge(doctor.status)}
-          </td>
+              <td>
+                ${Helpers.escapeHTML(
+                  departmentName
+                )}
+              </td>
 
-          <td>
-            <div class="d-flex gap-1">
+              <td>
+                ${Helpers.escapeHTML(phone)}
+              </td>
 
-              <button
-                class="btn btn-sm btn-outline-primary"
-                data-edit-doctor="${doctor.id}">
-                <i class="bi bi-pencil"></i>
-              </button>
+              <td>
+                ${Helpers.money(fee)}
+              </td>
 
-              <button
-                class="btn btn-sm btn-outline-danger"
-                data-delete-doctor="${doctor.id}">
-                <i class="bi bi-trash"></i>
-              </button>
+              <td>
+                ${Helpers.badge(
+                  doctor.status
+                )}
+              </td>
 
-            </div>
-          </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    data-edit-doctor="${Helpers.escapeHTML(
+                      doctor.id
+                    )}"
+                  >
+                    <i class="bi bi-pencil"></i>
+                  </button>
 
-        </tr>
-        `,
-    );
-  });
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    data-delete-doctor="${Helpers.escapeHTML(
+                      doctor.id
+                    )}"
+                  >
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        })
+        .join("")
+    : `
+      <tr>
+        <td colspan="10" class="text-center text-muted py-4">
+          لا توجد بيانات للأطباء.
+        </td>
+      </tr>
+    `;
 }
 
 function populateDoctorSelect() {
-  const selects = document.querySelectorAll("#aDoctor, #filterDoctor");
+  const selectors = [
+    "aDoctor",
+    "filterDoctor"
+  ];
 
-  selects.forEach((select) => {
-    const currentValue = select.value;
+  selectors.forEach((id) => {
+    const select =
+      document.getElementById(id);
+
+    if (!select) {
+      return;
+    }
+
+    const currentValue =
+      select.value;
+
+    const placeholder =
+      select.options[0]
+        ? select.options[0].textContent
+        : "اختر الطبيب";
 
     select.innerHTML = `
-            <option value="">اختر الطبيب</option>
-        `;
+      <option value="">
+        ${Helpers.escapeHTML(placeholder)}
+      </option>
+    `;
 
     doctorsData.forEach((doctor) => {
-      const option = document.createElement("option");
+      const option =
+        document.createElement(
+          "option"
+        );
 
       option.value = doctor.id;
-      option.textContent = doctor.specialty
-        ? `${doctor.doctor_name} - ${doctor.specialty}`
-        : doctor.doctor_name;
+
+      const name =
+        doctor.name ||
+        doctor.doctor_name ||
+        "طبيب";
+
+      const specialty =
+        doctor.specialty
+          ? ` — ${doctor.specialty}`
+          : "";
+
+      option.textContent =
+        `${name}${specialty}`;
 
       select.appendChild(option);
     });
 
-    if ([...select.options].some((option) => option.value == currentValue)) {
+    if (currentValue) {
       select.value = currentValue;
     }
   });
 }
 
-function openDoctorForm(doctor = null) {
-  editingDoctorId = doctor?.id || null;
+function openDoctorForm(
+  doctor = null
+) {
+  editingDoctorId =
+    doctor?.id || null;
 
-  Helpers.setValue("doctorId", doctor?.id || "");
+  Helpers.setValue(
+    "doctorId",
+    doctor?.id || ""
+  );
 
-  Helpers.setValue("dName", doctor?.name || doctor?.doctor_name || "");
+  Helpers.setValue(
+    "dName",
+    doctor?.name ||
+    doctor?.doctor_name ||
+    ""
+  );
 
-  Helpers.setValue("dSpecialty", doctor?.specialty || "");
+  Helpers.setValue(
+    "dSpecialty",
+    doctor?.specialty ||
+    ""
+  );
 
-  Helpers.setValue("dDepartment", doctor?.department_id || "");
+  Helpers.setValue(
+    "dDepartment",
+    doctor?.department_id ||
+    doctor?.department?.id ||
+    ""
+  );
 
-  Helpers.setValue("dDegree", doctor?.degree || "");
+  Helpers.setValue(
+    "dDegree",
+    doctor?.degree ||
+    ""
+  );
 
-  Helpers.setValue("dPhone", doctor?.phone || "");
+  Helpers.setValue(
+    "dPhone",
+    doctor?.phone ||
+    ""
+  );
 
-  Helpers.setValue("dEmail", doctor?.email || "");
+  Helpers.setValue(
+    "dEmail",
+    doctor?.email ||
+    ""
+  );
 
-  Helpers.setValue("dExperience", doctor?.experience || "");
+  Helpers.setValue(
+    "dExperience",
+    doctor?.experience ||
+    ""
+  );
 
-  Helpers.setValue("dFee", doctor?.consultation_fee || doctor?.fee || "");
+  Helpers.setValue(
+    "dFee",
+    doctor?.consultation_fee ??
+    doctor?.fee ??
+    ""
+  );
 
-  Helpers.setValue("dStatus", doctor?.status || "Active");
+  Helpers.setValue(
+    "dStatus",
+    doctor?.status ||
+    "Active"
+  );
 
-  Helpers.setValue("dBio", doctor?.bio || "");
+  Helpers.setValue(
+    "dBio",
+    doctor?.bio ||
+    ""
+  );
 
-  document.querySelectorAll(".day-check").forEach((checkbox) => {
-    checkbox.checked = false;
+  const checks =
+    document.querySelectorAll(
+      ".day-check"
+    );
+
+  checks.forEach((check) => {
+    const value =
+      check.value ||
+      check.dataset.day;
+
+    const workingDays =
+      doctor?.working_days ||
+      doctor?.workingDays ||
+      doctor?.days ||
+      [];
+
+    check.checked =
+      Array.isArray(workingDays) &&
+      workingDays.includes(value);
   });
+
+  const title =
+    document.getElementById(
+      "doctorModalLabel"
+    );
+
+  if (title) {
+    title.textContent =
+      doctor
+        ? "تعديل بيانات الطبيب"
+        : "إضافة طبيب";
+  }
 
   showModal("doctorModal");
 }
 
 async function saveDoctor() {
-  const name = Helpers.getValue("dName");
+  const name =
+    Helpers.getValue(
+      "dName"
+    ).trim();
 
-  const specialty = Helpers.getValue("dSpecialty");
+  const specialty =
+    Helpers.getValue(
+      "dSpecialty"
+    ).trim();
 
-  if (!name || !specialty) {
-    Toast.warning("يرجى إدخال اسم الطبيب والتخصص.");
+  const departmentId =
+    Helpers.getValue(
+      "dDepartment"
+    );
+
+  if (!name) {
+    Toast.error(
+      "اسم الطبيب مطلوب."
+    );
     return;
   }
+
+  if (!specialty) {
+    Toast.error(
+      "التخصص مطلوب."
+    );
+    return;
+  }
+
+  if (!departmentId) {
+    Toast.error(
+      "يرجى اختيار القسم."
+    );
+    return;
+  }
+
+  const workingDays =
+    Array.from(
+      document.querySelectorAll(
+        ".day-check:checked"
+      )
+    )
+      .map(
+        (element) =>
+          element.value ||
+          element.dataset.day
+      )
+      .filter(Boolean);
 
   const body = {
     name,
     doctor_name: name,
     specialty,
-
-    department_id: Helpers.getValue("dDepartment") || null,
-
-    phone: Helpers.getValue("dPhone"),
-
-    email: Helpers.getValue("dEmail"),
-
-    fee: Helpers.getValue("dFee") || 0,
-
-    consultation_fee: Helpers.getValue("dFee") || 0,
-
-    status: Helpers.getValue("dStatus") || "Active",
-
-    bio: Helpers.getValue("dBio"),
+    department_id: departmentId,
+    degree:
+      Helpers.getValue(
+        "dDegree"
+      ).trim(),
+    phone:
+      Helpers.getValue(
+        "dPhone"
+      ).trim(),
+    email:
+      Helpers.getValue(
+        "dEmail"
+      ).trim(),
+    experience:
+      Helpers.getValue(
+        "dExperience"
+      ),
+    fee:
+      Helpers.getValue(
+        "dFee"
+      ),
+    consultation_fee:
+      Helpers.getValue(
+        "dFee"
+      ),
+    status:
+      Helpers.getValue(
+        "dStatus"
+      ) || "Active",
+    bio:
+      Helpers.getValue(
+        "dBio"
+      ).trim(),
+    working_days: workingDays
   };
 
   try {
     if (editingDoctorId) {
-      await API.put(`/doctors/${editingDoctorId}`, body);
+      await API.put(
+        `/doctors/${encodeURIComponent(
+          editingDoctorId
+        )}`,
+        body
+      );
 
-      Toast.success("تم تحديث بيانات الطبيب.");
+      Toast.success(
+        "تم تحديث بيانات الطبيب بنجاح."
+      );
     } else {
-      await API.post("/doctors", body);
+      await API.post(
+        "/doctors",
+        body
+      );
 
-      Toast.success("تمت إضافة الطبيب.");
+      Toast.success(
+        "تمت إضافة الطبيب بنجاح."
+      );
     }
 
     hideModal("doctorModal");
 
+    editingDoctorId = null;
+
     await loadDoctors();
   } catch (error) {
-    Toast.error(error.message);
+    console.error(
+      "Save doctor error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر حفظ بيانات الطبيب."
+    );
   }
 }
+
 
 /* =========================================================
 16. PATIENTS
@@ -1580,255 +2653,536 @@ let patientsData = [];
 let editingPatientId = null;
 
 async function loadPatients() {
-  const hasPatientTable = document.getElementById("patientsTableBody");
-  const hasPatientSelect = document.querySelector("#aPatient, #filterPatient");
+  const table =
+    document.getElementById(
+      "patientsTableBody"
+    );
 
-  if (!hasPatientTable && !hasPatientSelect) {
+  const selects =
+    document.querySelectorAll(
+      "#aPatient,#filterPatient"
+    );
+
+  if (
+    !table &&
+    !selects.length
+  ) {
     return;
   }
 
   try {
-    const result = await API.get("/patients");
+    const result =
+      await API.get("/patients");
 
-    patientsData = Array.isArray(result)
-      ? result
-      : result?.patients || result?.data || [];
+    patientsData =
+      Array.isArray(result)
+        ? result
+        : result?.patients ||
+          result?.data ||
+          [];
 
     renderPatients();
     populatePatientSelect();
   } catch (error) {
-    console.error("Load patients error:", error);
-    Toast.error(error.message || "تعذر تحميل المرضى.");
+    console.error(
+      "Patients error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر تحميل المرضى."
+    );
   }
 }
 
 function renderPatients() {
-  const table = document.getElementById("patientsTableBody");
-
-  if (!table) return;
-
-  const search = Helpers.normalize(Helpers.getValue("patientSearch"));
-
-  const department = Helpers.getValue("filterDepartment");
-
-  const gender = Helpers.normalize(Helpers.getValue("filterGender"));
-
-  const status = Helpers.normalize(Helpers.getValue("filterStatus"));
-
-  const list = patientsData.filter((patient) => {
-    const name = patient.name || patient.patient_name || "";
-
-    return (
-      (!search ||
-        Helpers.normalize(name).includes(search) ||
-        Helpers.normalize(patient.phone).includes(search) ||
-        String(patient.file_number || "").includes(search)) &&
-      (!department ||
-        String(patient.department_id || "") === String(department)) &&
-      (!gender ||
-        gender === "all" ||
-        Helpers.normalize(patient.gender) === gender) &&
-      (!status ||
-        status === "all" ||
-        Helpers.normalize(patient.status) === status)
+  const table =
+    document.getElementById(
+      "patientsTableBody"
     );
-  });
 
-  Helpers.setText("patientCount", list.length);
+  const search =
+    Helpers.normalize(
+      Helpers.getValue(
+        "patientSearch"
+      )
+    );
 
-  table.innerHTML = "";
+  const department =
+    Helpers.getValue(
+      "filterDepartment"
+    );
 
-  list.forEach((patient) => {
-    const name = patient.name || patient.patient_name || "—";
+  const gender =
+    Helpers.normalize(
+      Helpers.getValue(
+        "filterGender"
+      )
+    );
 
-    table.insertAdjacentHTML(
-      "beforeend",
-      `
+  const status =
+    Helpers.normalize(
+      Helpers.getValue(
+        "filterStatus"
+      )
+    );
+
+  const filtered =
+    patientsData.filter(
+      (patient) => {
+        const name =
+          patient.name ||
+          patient.patient_name ||
+          "";
+
+        const phone =
+          patient.phone ||
+          "";
+
+        const patientDepartment =
+          String(
+            patient.department_id ||
+            patient.department?.id ||
+            ""
+          );
+
+        const patientGender =
+          Helpers.normalize(
+            patient.gender
+          );
+
+        const patientStatus =
+          Helpers.normalize(
+            patient.status
+          );
+
+        return (
+          (
+            !search ||
+            Helpers.normalize(name).includes(
+              search
+            ) ||
+            Helpers.normalize(phone).includes(
+              search
+            ) ||
+            Helpers.normalize(
+              patient.file_number
+            ).includes(search)
+          ) &&
+          (
+            !department ||
+            patientDepartment ===
+              String(department)
+          ) &&
+          (
+            !gender ||
+            patientGender === gender
+          ) &&
+          (
+            !status ||
+            patientStatus === status
+          )
+        );
+      }
+    );
+
+  Helpers.setText(
+    "patientCount",
+    filtered.length
+  );
+
+  if (!table) {
+    return;
+  }
+
+  table.innerHTML = filtered.length
+    ? filtered
+        .map((patient, index) => {
+          const name =
+            patient.name ||
+            patient.patient_name ||
+            "—";
+
+          const departmentName =
+            patient.department_name ||
+            patient.department?.name ||
+            "—";
+
+          const age =
+            patient.age ??
+            Helpers.calcAge(
+              patient.birth_date ||
+              patient.date_of_birth
+            );
+
+          return `
+            <tr>
+              <td>
+                <input
+                  type="checkbox"
+                  class="form-check-input patient-check"
+                  value="${Helpers.escapeHTML(
+                    patient.id
+                  )}"
+                >
+              </td>
+
+              <td>${index + 1}</td>
+
+              <td>
+                ${Helpers.escapeHTML(
+                  patient.file_number ||
+                  "—"
+                )}
+              </td>
+
+              <td>
+                ${Helpers.escapeHTML(name)}
+              </td>
+
+              <td>
+                ${Helpers.escapeHTML(
+                  Helpers.statusText(
+                    patient.gender
+                  )
+                )}
+              </td>
+
+              <td>${age}</td>
+
+              <td>
+                ${Helpers.escapeHTML(
+                  patient.phone ||
+                  "—"
+                )}
+              </td>
+
+              <td>
+                ${Helpers.escapeHTML(
+                  departmentName
+                )}
+              </td>
+
+              <td>
+                ${Helpers.badge(
+                  patient.status
+                )}
+              </td>
+
+              <td>
+                <div class="d-flex gap-1">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    data-edit-patient="${Helpers.escapeHTML(
+                      patient.id
+                    )}"
+                  >
+                    <i class="bi bi-pencil"></i>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    data-delete-patient="${Helpers.escapeHTML(
+                      patient.id
+                    )}"
+                  >
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        })
+        .join("")
+    : `
       <tr>
-
-        <td>
-          <input
-            type="checkbox"
-            class="patient-check"
-            value="${patient.id}">
+        <td colspan="12" class="text-center text-muted py-4">
+          لا توجد بيانات للمرضى.
         </td>
-
-        <td>
-          ${Helpers.escapeHTML(patient.file_number || "—")}
-        </td>
-
-        <td>
-          <strong>
-            ${Helpers.escapeHTML(name)}
-          </strong>
-        </td>
-
-        <td>
-          ${Helpers.escapeHTML(patient.gender || "—")}
-        </td>
-
-        <td>
-          ${Helpers.calcAge(patient.birth_date)}
-        </td>
-
-        <td>
-          ${Helpers.escapeHTML(patient.phone || "—")}
-        </td>
-
-        <td>
-          ${Helpers.escapeHTML(
-            patient.department_name || patient.department || "—",
-          )}
-        </td>
-
-        <td>
-          ${Helpers.badge(patient.status)}
-        </td>
-
-        <td>
-          <div class="d-flex gap-1">
-
-            <button
-              class="btn btn-sm btn-outline-primary"
-              data-edit-patient="${patient.id}">
-              <i class="bi bi-pencil"></i>
-            </button>
-
-            <button
-              class="btn btn-sm btn-outline-danger"
-              data-delete-patient="${patient.id}">
-              <i class="bi bi-trash"></i>
-            </button>
-
-          </div>
-        </td>
-
       </tr>
-      `,
-    );
-  });
+    `;
 }
 
 function populatePatientSelect() {
-  const selects = document.querySelectorAll("#aPatient, #filterPatient");
+  const selectors = [
+    "aPatient",
+    "filterPatient"
+  ];
 
-  selects.forEach((select) => {
-    const currentValue = select.value;
+  selectors.forEach((id) => {
+    const select =
+      document.getElementById(id);
+
+    if (!select) {
+      return;
+    }
+
+    const currentValue =
+      select.value;
+
+    const placeholder =
+      select.options[0]
+        ? select.options[0].textContent
+        : "اختر المريض";
 
     select.innerHTML = `
-            <option value="">اختر المريض</option>
-        `;
+      <option value="">
+        ${Helpers.escapeHTML(placeholder)}
+      </option>
+    `;
 
     patientsData.forEach((patient) => {
-      const option = document.createElement("option");
+      const option =
+        document.createElement(
+          "option"
+        );
 
-      option.value = patient.id;
+      option.value =
+        patient.id;
 
-      option.textContent = patient.file_number
-        ? `${patient.patient_name} - ${patient.file_number}`
-        : patient.patient_name;
+      const name =
+        patient.name ||
+        patient.patient_name ||
+        "مريض";
+
+      const fileNumber =
+        patient.file_number
+          ? ` — ${patient.file_number}`
+          : "";
+
+      option.textContent =
+        `${name}${fileNumber}`;
 
       select.appendChild(option);
     });
 
-    if ([...select.options].some((option) => option.value == currentValue)) {
+    if (currentValue) {
       select.value = currentValue;
     }
   });
 }
 
-function openPatientForm(patient = null) {
-  editingPatientId = patient?.id || null;
+function openPatientForm(
+  patient = null
+) {
+  editingPatientId =
+    patient?.id || null;
 
-  Helpers.setValue("patientId", patient?.id || "");
+  Helpers.setValue(
+    "patientId",
+    patient?.id || ""
+  );
 
-  Helpers.setValue("pName", patient?.name || patient?.patient_name || "");
+  Helpers.setValue(
+    "pName",
+    patient?.name ||
+    patient?.patient_name ||
+    ""
+  );
 
-  Helpers.setValue("pPhone", patient?.phone || "");
+  Helpers.setValue(
+    "pPhone",
+    patient?.phone ||
+    ""
+  );
 
-  Helpers.setValue("pEmail", patient?.email || "");
+  Helpers.setValue(
+    "pEmail",
+    patient?.email ||
+    ""
+  );
 
   Helpers.setValue(
     "pDob",
-    patient?.birth_date ? String(patient.birth_date).slice(0, 10) : "",
+    patient?.birth_date ||
+    patient?.date_of_birth ||
+    ""
   );
 
-  Helpers.setValue("pGender", patient?.gender || "");
+  Helpers.setValue(
+    "pGender",
+    patient?.gender ||
+    ""
+  );
 
-  Helpers.setValue("pDepartment", patient?.department_id || "");
+  Helpers.setValue(
+    "pDepartment",
+    patient?.department_id ||
+    patient?.department?.id ||
+    ""
+  );
 
-  Helpers.setValue("pBlood", patient?.blood_type || "");
+  Helpers.setValue(
+    "pBlood",
+    patient?.blood_type ||
+    ""
+  );
 
-  Helpers.setValue("pAddress", patient?.address || "");
+  Helpers.setValue(
+    "pAddress",
+    patient?.address ||
+    ""
+  );
 
-  Helpers.setValue("pChronic", patient?.chronic_conditions || "");
+  Helpers.setValue(
+    "pChronic",
+    patient?.chronic_conditions ||
+    ""
+  );
 
-  Helpers.setValue("pAllergies", patient?.allergies || "");
+  Helpers.setValue(
+    "pAllergies",
+    patient?.allergies ||
+    ""
+  );
 
-  Helpers.setValue("pEmergency", patient?.emergency_contact_phone || "");
+  Helpers.setValue(
+    "pEmergency",
+    patient?.emergency_contact_phone ||
+    ""
+  );
 
-  Helpers.setValue("pStatus", patient?.status || "active");
+  Helpers.setValue(
+    "pStatus",
+    patient?.status ||
+    "active"
+  );
 
-  Helpers.setValue("pNotes", patient?.notes || "");
+  Helpers.setValue(
+    "pNotes",
+    patient?.notes ||
+    ""
+  );
+
+  const title =
+    document.getElementById(
+      "patientModalLabel"
+    );
+
+  if (title) {
+    title.textContent =
+      patient
+        ? "تعديل بيانات المريض"
+        : "إضافة مريض";
+  }
 
   showModal("patientModal");
 }
 
 async function savePatient() {
-  const name = Helpers.getValue("pName");
+  const name =
+    Helpers.getValue(
+      "pName"
+    ).trim();
 
   if (!name) {
-    Toast.warning("يرجى إدخال اسم المريض.");
+    Toast.error(
+      "اسم المريض مطلوب."
+    );
     return;
   }
 
   const body = {
     name,
     patient_name: name,
-
-    phone: Helpers.getValue("pPhone"),
-
-    email: Helpers.getValue("pEmail"),
-
-    birth_date: Helpers.getValue("pDob") || null,
-
-    gender: Helpers.getValue("pGender"),
-
-    department_id: Helpers.getValue("pDepartment") || null,
-
-    blood_type: Helpers.getValue("pBlood"),
-
-    address: Helpers.getValue("pAddress"),
-
-    chronic_conditions: Helpers.getValue("pChronic"),
-
-    allergies: Helpers.getValue("pAllergies"),
-
-    emergency_contact_phone: Helpers.getValue("pEmergency"),
-
-    status: Helpers.getValue("pStatus") || "active",
-
-    notes: Helpers.getValue("pNotes"),
+    phone:
+      Helpers.getValue(
+        "pPhone"
+      ).trim(),
+    email:
+      Helpers.getValue(
+        "pEmail"
+      ).trim(),
+    birth_date:
+      Helpers.getValue(
+        "pDob"
+      ),
+    date_of_birth:
+      Helpers.getValue(
+        "pDob"
+      ),
+    gender:
+      Helpers.getValue(
+        "pGender"
+      ),
+    department_id:
+      Helpers.getValue(
+        "pDepartment"
+      ),
+    blood_type:
+      Helpers.getValue(
+        "pBlood"
+      ),
+    address:
+      Helpers.getValue(
+        "pAddress"
+      ).trim(),
+    chronic_conditions:
+      Helpers.getValue(
+        "pChronic"
+      ).trim(),
+    allergies:
+      Helpers.getValue(
+        "pAllergies"
+      ).trim(),
+    emergency_contact_phone:
+      Helpers.getValue(
+        "pEmergency"
+      ).trim(),
+    status:
+      Helpers.getValue(
+        "pStatus"
+      ) || "active",
+    notes:
+      Helpers.getValue(
+        "pNotes"
+      ).trim()
   };
 
   try {
     if (editingPatientId) {
-      await API.put(`/patients/${editingPatientId}`, body);
+      await API.put(
+        `/patients/${encodeURIComponent(
+          editingPatientId
+        )}`,
+        body
+      );
 
-      Toast.success("تم تحديث بيانات المريض.");
+      Toast.success(
+        "تم تحديث بيانات المريض بنجاح."
+      );
     } else {
-      await API.post("/patients", body);
+      await API.post(
+        "/patients",
+        body
+      );
 
-      Toast.success("تمت إضافة المريض.");
+      Toast.success(
+        "تمت إضافة المريض بنجاح."
+      );
     }
 
     hideModal("patientModal");
 
+    editingPatientId = null;
+
     await loadPatients();
   } catch (error) {
-    Toast.error(error.message);
+    console.error(
+      "Save patient error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر حفظ بيانات المريض."
+    );
   }
 }
+
 
 /* =========================================================
 17. SERVICES
@@ -1838,225 +3192,491 @@ let servicesData = [];
 let editingServiceId = null;
 
 async function loadServices() {
-  const table = document.getElementById("servicesTableBody");
+  const table =
+    document.getElementById(
+      "servicesTableBody"
+    );
 
-  if (!table) return;
+  const selects =
+    document.querySelectorAll(
+      "#aService"
+    );
+
+  if (
+    !table &&
+    !selects.length
+  ) {
+    return;
+  }
 
   try {
-    const result = await API.get("/services");
+    const result =
+      await API.get("/services");
 
-    servicesData = Array.isArray(result)
-      ? result
-      : result?.services || result?.data || [];
+    servicesData =
+      Array.isArray(result)
+        ? result
+        : result?.services ||
+          result?.data ||
+          [];
 
     renderServices();
     populateServiceSelect();
   } catch (error) {
-    Toast.error(error.message);
+    console.error(
+      "Services error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر تحميل الخدمات."
+    );
   }
 }
 
 function renderServices() {
-  const table = document.getElementById("servicesTableBody");
-
-  if (!table) return;
-
-  const search = Helpers.normalize(Helpers.getValue("serviceSearch"));
-
-  const department = Helpers.getValue("filterDepartment");
-
-  const status = Helpers.normalize(Helpers.getValue("filterStatus"));
-
-  const min = Number(Helpers.getValue("filterMinPrice") || 0);
-
-  const max = Number(Helpers.getValue("filterMaxPrice") || 0);
-
-  const list = servicesData.filter((service) => {
-    const name = service.name || service.service_name || "";
-
-    const price = Number(service.price || 0);
-
-    return (
-      (!search || Helpers.normalize(name).includes(search)) &&
-      (!department ||
-        String(service.department_id || "") === String(department)) &&
-      (!status ||
-        status === "all" ||
-        Helpers.normalize(service.status) === status) &&
-      (!min || price >= min) &&
-      (!max || price <= max)
+  const table =
+    document.getElementById(
+      "servicesTableBody"
     );
-  });
 
-  Helpers.setText("serviceTotal", servicesData.length);
+  const search =
+    Helpers.normalize(
+      Helpers.getValue(
+        "serviceSearch"
+      )
+    );
+
+  const department =
+    Helpers.getValue(
+      "filterDepartment"
+    );
+
+  const status =
+    Helpers.normalize(
+      Helpers.getValue(
+        "filterStatus"
+      )
+    );
+
+  const minPrice =
+    Number(
+      Helpers.getValue(
+        "filterMinPrice"
+      )
+    ) || 0;
+
+  const maxRaw =
+    Helpers.getValue(
+      "filterMaxPrice"
+    );
+
+  const maxPrice =
+    maxRaw === ""
+      ? Infinity
+      : Number(maxRaw);
+
+  const filtered =
+    servicesData.filter(
+      (service) => {
+        const name =
+          service.name ||
+          service.service_name ||
+          "";
+
+        const serviceDepartment =
+          String(
+            service.department_id ||
+            service.department?.id ||
+            ""
+          );
+
+        const price =
+          Number(
+            service.price || 0
+          );
+
+        const serviceStatus =
+          Helpers.normalize(
+            service.status
+          );
+
+        return (
+          (
+            !search ||
+            Helpers.normalize(name).includes(
+              search
+            )
+          ) &&
+          (
+            !department ||
+            serviceDepartment ===
+              String(department)
+          ) &&
+          (
+            !status ||
+            serviceStatus === status
+          ) &&
+          price >= minPrice &&
+          price <= maxPrice
+        );
+      }
+    );
+
+  Helpers.setText(
+    "serviceCount",
+    filtered.length
+  );
+
+  Helpers.setText(
+    "serviceTotal",
+    servicesData.length
+  );
 
   Helpers.setText(
     "serviceActive",
-    servicesData.filter((s) => Helpers.normalize(s.status) === "active").length,
+    servicesData.filter(
+      (item) =>
+        Helpers.normalize(
+          item.status
+        ) === "active"
+    ).length
   );
 
-  const avg = servicesData.length
-    ? servicesData.reduce((sum, s) => sum + Number(s.price || 0), 0) /
-      servicesData.length
-    : 0;
+  const prices =
+    servicesData
+      .map(
+        (item) =>
+          Number(item.price || 0)
+      )
+      .filter(
+        (value) =>
+          !Number.isNaN(value)
+      );
 
-  Helpers.setText("serviceAvgPrice", Helpers.money(avg));
+  const average =
+    prices.length
+      ? prices.reduce(
+          (sum, value) =>
+            sum + value,
+          0
+        ) / prices.length
+      : 0;
+
+  Helpers.setText(
+    "serviceAverage",
+    Helpers.money(average)
+  );
 
   Helpers.setText(
     "serviceDepartments",
-    new Set(servicesData.map((s) => s.department_id).filter(Boolean)).size,
+    new Set(
+      servicesData
+        .map(
+          (item) =>
+            item.department_id ||
+            item.department?.id
+        )
+        .filter(Boolean)
+    ).size
   );
 
-  table.innerHTML = "";
+  if (!table) {
+    return;
+  }
 
-  list.forEach((service, index) => {
-    const name = service.name || service.service_name || "—";
+  table.innerHTML = filtered.length
+    ? filtered
+        .map((service, index) => {
+          const name =
+            service.name ||
+            service.service_name ||
+            "—";
 
-    table.insertAdjacentHTML(
-      "beforeend",
-      `
-        <tr>
+          const departmentName =
+            service.department_name ||
+            service.department?.name ||
+            "—";
 
-          <td>${index + 1}</td>
+          const price =
+            Number(
+              service.price || 0
+            );
 
-          <td>
-            <strong>
-              ${Helpers.escapeHTML(name)}
-            </strong>
-          </td>
+          const duration =
+            service.duration_minutes ??
+            service.duration ??
+            "—";
 
-          <td>
-            ${Helpers.escapeHTML(service.department_name || "—")}
-          </td>
+          return `
+            <tr>
+              <td>${index + 1}</td>
 
-          <td>
-            ${Helpers.money(service.price)}
-          </td>
+              <td>
+                ${Helpers.escapeHTML(name)}
+              </td>
 
-          <td>
-            ${service.duration_minutes || 30}
-            دقيقة
-          </td>
+              <td>
+                ${Helpers.escapeHTML(
+                  departmentName
+                )}
+              </td>
 
-          <td>
-            ${Helpers.badge(service.status)}
-          </td>
+              <td>
+                ${Helpers.money(price)}
+              </td>
 
-          <td>
-            <div class="d-flex gap-1">
+              <td>
+                ${Helpers.escapeHTML(
+                  duration
+                )}
+              </td>
 
-              <button
-                class="btn btn-sm btn-outline-primary"
-                data-edit-service="${service.id}">
-                <i class="bi bi-pencil"></i>
-              </button>
+              <td>
+                ${Helpers.badge(
+                  service.status
+                )}
+              </td>
 
-              <button
-                class="btn btn-sm btn-outline-danger"
-                data-delete-service="${service.id}">
-                <i class="bi bi-trash"></i>
-              </button>
+              <td>
+                <div class="d-flex gap-1">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    data-edit-service="${Helpers.escapeHTML(
+                      service.id
+                    )}"
+                  >
+                    <i class="bi bi-pencil"></i>
+                  </button>
 
-            </div>
-          </td>
-
-        </tr>
-        `,
-    );
-  });
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    data-delete-service="${Helpers.escapeHTML(
+                      service.id
+                    )}"
+                  >
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        })
+        .join("")
+    : `
+      <tr>
+        <td colspan="10" class="text-center text-muted py-4">
+          لا توجد خدمات.
+        </td>
+      </tr>
+    `;
 }
 
 function populateServiceSelect() {
-  const select = document.getElementById("aService");
+  const select =
+    document.getElementById(
+      "aService"
+    );
 
-  if (!select) return;
-
-  const current = select.value;
-
-  const first = select.querySelector("option");
-
-  select.innerHTML = "";
-
-  if (first) {
-    select.appendChild(first.cloneNode(true));
-  } else {
-    select.innerHTML = `<option value="">اختر الخدمة</option>`;
+  if (!select) {
+    return;
   }
 
+  const currentValue =
+    select.value;
+
+  const placeholder =
+    select.options[0]
+      ? select.options[0].textContent
+      : "اختر الخدمة";
+
+  select.innerHTML = `
+    <option value="">
+      ${Helpers.escapeHTML(placeholder)}
+    </option>
+  `;
+
   servicesData.forEach((service) => {
-    const option = document.createElement("option");
+    const option =
+      document.createElement(
+        "option"
+      );
 
-    option.value = service.id;
+    option.value =
+      service.id;
 
-    option.textContent = service.name || service.service_name || "";
+    option.textContent =
+      service.name ||
+      service.service_name ||
+      "خدمة";
 
     select.appendChild(option);
   });
 
-  select.value = current;
+  if (currentValue) {
+    select.value =
+      currentValue;
+  }
 }
 
-function openServiceForm(service = null) {
-  editingServiceId = service?.id || null;
+function openServiceForm(
+  service = null
+) {
+  editingServiceId =
+    service?.id || null;
 
-  Helpers.setValue("serviceId", service?.id || "");
+  Helpers.setValue(
+    "serviceId",
+    service?.id || ""
+  );
 
-  Helpers.setValue("sName", service?.name || service?.service_name || "");
+  Helpers.setValue(
+    "sName",
+    service?.name ||
+    service?.service_name ||
+    ""
+  );
 
-  Helpers.setValue("sDepartment", service?.department_id || "");
+  Helpers.setValue(
+    "sDepartment",
+    service?.department_id ||
+    service?.department?.id ||
+    ""
+  );
 
-  Helpers.setValue("sPrice", service?.price || "");
+  Helpers.setValue(
+    "sPrice",
+    service?.price ??
+    ""
+  );
 
-  Helpers.setValue("sDuration", service?.duration_minutes || 30);
+  Helpers.setValue(
+    "sDuration",
+    service?.duration_minutes ??
+    service?.duration ??
+    ""
+  );
 
-  Helpers.setValue("sStatus", service?.status || "Active");
+  Helpers.setValue(
+    "sStatus",
+    service?.status ||
+    "Active"
+  );
 
-  Helpers.setValue("sDescription", service?.description || "");
+  Helpers.setValue(
+    "sDescription",
+    service?.description ||
+    ""
+  );
+
+  const title =
+    document.getElementById(
+      "serviceModalLabel"
+    );
+
+  if (title) {
+    title.textContent =
+      service
+        ? "تعديل الخدمة"
+        : "إضافة خدمة";
+  }
 
   showModal("serviceModal");
 }
 
 async function saveService() {
-  const name = Helpers.getValue("sName");
+  const name =
+    Helpers.getValue(
+      "sName"
+    ).trim();
+
+  const departmentId =
+    Helpers.getValue(
+      "sDepartment"
+    );
+
+  const price =
+    Helpers.getValue(
+      "sPrice"
+    );
 
   if (!name) {
-    Toast.warning("يرجى إدخال اسم الخدمة.");
+    Toast.error(
+      "اسم الخدمة مطلوب."
+    );
+    return;
+  }
+
+  if (!departmentId) {
+    Toast.error(
+      "يرجى اختيار القسم."
+    );
     return;
   }
 
   const body = {
     name,
     service_name: name,
-
-    department_id: Helpers.getValue("sDepartment") || null,
-
-    price: Helpers.getValue("sPrice") || 0,
-
-    duration_minutes: Helpers.getValue("sDuration") || 30,
-
-    status: Helpers.getValue("sStatus") || "Active",
-
-    description: Helpers.getValue("sDescription"),
+    department_id: departmentId,
+    price,
+    duration_minutes:
+      Helpers.getValue(
+        "sDuration"
+      ),
+    status:
+      Helpers.getValue(
+        "sStatus"
+      ) || "Active",
+    description:
+      Helpers.getValue(
+        "sDescription"
+      ).trim()
   };
 
   try {
     if (editingServiceId) {
-      await API.put(`/services/${editingServiceId}`, body);
+      await API.put(
+        `/services/${encodeURIComponent(
+          editingServiceId
+        )}`,
+        body
+      );
 
-      Toast.success("تم تحديث الخدمة.");
+      Toast.success(
+        "تم تحديث الخدمة بنجاح."
+      );
     } else {
-      await API.post("/services", body);
+      await API.post(
+        "/services",
+        body
+      );
 
-      Toast.success("تمت إضافة الخدمة.");
+      Toast.success(
+        "تمت إضافة الخدمة بنجاح."
+      );
     }
 
     hideModal("serviceModal");
 
+    editingServiceId = null;
+
     await loadServices();
   } catch (error) {
-    Toast.error(error.message);
+    console.error(
+      "Save service error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر حفظ الخدمة."
+    );
   }
 }
+
 
 /* =========================================================
 18. APPOINTMENTS
@@ -2066,313 +3686,611 @@ let appointmentsData = [];
 let editingAppointmentId = null;
 
 async function loadAppointments() {
-  const table = document.getElementById("appointmentsTableBody");
+  const table =
+    document.getElementById(
+      "appointmentsTableBody"
+    );
 
-  if (!table) return;
+  const form =
+    document.getElementById(
+      "appointmentForm"
+    );
+
+  if (!table && !form) {
+    return;
+  }
 
   try {
-    const result = await API.get("/appointments");
+    const result =
+      await API.get(
+        "/appointments"
+      );
 
-    appointmentsData = Array.isArray(result)
-      ? result
-      : result?.appointments || result?.data || [];
+    appointmentsData =
+      Array.isArray(result)
+        ? result
+        : result?.appointments ||
+          result?.data ||
+          [];
 
     renderAppointments();
     updateAppointmentStats();
   } catch (error) {
-    Toast.error(error.message);
+    console.error(
+      "Appointments error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر تحميل المواعيد."
+    );
   }
 }
 
 function renderAppointments() {
-  const table = document.getElementById("appointmentsTableBody");
+  const table =
+    document.getElementById(
+      "appointmentsTableBody"
+    );
 
-  if (!table) return;
+  if (!table) {
+    updateAppointmentStats();
+    return;
+  }
 
-  const search = Helpers.normalize(Helpers.getValue("apptSearch"));
+  const search =
+    Helpers.normalize(
+      Helpers.getValue(
+        "apptSearch"
+      )
+    );
 
-  const department = Helpers.getValue("filterDepartment");
+  const department =
+    Helpers.getValue(
+      "filterDepartment"
+    );
 
-  const doctor = Helpers.getValue("filterDoctor");
+  const doctor =
+    Helpers.getValue(
+      "filterDoctor"
+    );
 
-  const status = Helpers.normalize(Helpers.getValue("filterStatus"));
+  const status =
+    Helpers.normalize(
+      Helpers.getValue(
+        "filterStatus"
+      )
+    );
 
-  const type = Helpers.normalize(Helpers.getValue("filterType"));
+  const type =
+    Helpers.normalize(
+      Helpers.getValue(
+        "filterType"
+      )
+    );
 
-  const date = Helpers.getValue("filterDate");
+  const date =
+    Helpers.getValue(
+      "filterDate"
+    );
 
   const activeTab =
-    document.querySelector("#apptTabs [data-tab].active")?.dataset.tab || "";
+    document.querySelector(
+      "#apptTabs [data-tab].active"
+    )?.dataset.tab || "";
 
-  const list = appointmentsData.filter((appointment) => {
-    const patientName = appointment.patient_name || appointment.name || "";
+  const today =
+    Helpers.today();
 
-    const doctorName = appointment.doctor_name || "";
+  const filtered =
+    appointmentsData.filter(
+      (appointment) => {
+        const patientName =
+          appointment.patient_name ||
+          appointment.patient?.name ||
+          appointment.name ||
+          "";
 
-    const matchesSearch =
-      !search ||
-      Helpers.normalize(patientName).includes(search) ||
-      Helpers.normalize(doctorName).includes(search) ||
-      String(appointment.file_number || "").includes(search);
+        const doctorName =
+          appointment.doctor_name ||
+          appointment.doctor?.name ||
+          "";
 
-    const matchesDepartment =
-      !department ||
-      String(appointment.department_id || "") === String(department);
+        const departmentName =
+          appointment.department_name ||
+          appointment.department?.name ||
+          "";
 
-    const matchesDoctor =
-      !doctor || String(appointment.doctor_id || "") === String(doctor);
+        const appointmentDepartment =
+          String(
+            appointment.department_id ||
+            appointment.department?.id ||
+            ""
+          );
 
-    const matchesStatus =
-      !status ||
-      status === "all" ||
-      Helpers.status(appointment.status) === Helpers.status(status);
+        const appointmentDoctor =
+          String(
+            appointment.doctor_id ||
+            appointment.doctor?.id ||
+            ""
+          );
 
-    const matchesType =
-      !type || type === "all" || Helpers.normalize(appointment.type) === type;
+        const appointmentDate =
+          appointment.appointment_date ||
+          appointment.date ||
+          "";
 
-    const appointmentDate = String(
-      appointment.appointment_date || appointment.date || "",
-    ).slice(0, 10);
+        const appointmentStatus =
+          Helpers.normalize(
+            appointment.status
+          );
 
-    const matchesDate = !date || appointmentDate === date;
+        const appointmentType =
+          Helpers.normalize(
+            appointment.type
+          );
 
-    let matchesTab = true;
+        const searchMatch =
+          !search ||
+          Helpers.normalize(
+            patientName
+          ).includes(search) ||
+          Helpers.normalize(
+            doctorName
+          ).includes(search) ||
+          Helpers.normalize(
+            appointment.file_number
+          ).includes(search);
 
-    if (activeTab === "today") {
-      matchesTab = appointmentDate === Helpers.today();
-    } else if (activeTab === "pending") {
-      matchesTab = Helpers.status(appointment.status) === "pending";
-    } else if (activeTab === "confirmed") {
-      matchesTab = Helpers.status(appointment.status) === "confirmed";
-    } else if (activeTab === "completed") {
-      matchesTab = Helpers.status(appointment.status) === "completed";
-    }
+        const departmentMatch =
+          !department ||
+          appointmentDepartment ===
+            String(department) ||
+          Helpers.normalize(
+            departmentName
+          ) ===
+            Helpers.normalize(
+              document.querySelector(
+                `#filterDepartment option[value="${CSS.escape(
+                  department
+                )}"]`
+              )?.textContent || ""
+            );
 
-    return (
-      matchesSearch &&
-      matchesDepartment &&
-      matchesDoctor &&
-      matchesStatus &&
-      matchesType &&
-      matchesDate &&
-      matchesTab
+        const doctorMatch =
+          !doctor ||
+          appointmentDoctor ===
+            String(doctor);
+
+        const statusMatch =
+          !status ||
+          appointmentStatus === status;
+
+        const typeMatch =
+          !type ||
+          appointmentType === type;
+
+        const dateMatch =
+          !date ||
+          appointmentDate === date;
+
+        let tabMatch = true;
+
+        if (activeTab === "today") {
+          tabMatch =
+            appointmentDate === today;
+        } else if (
+          activeTab === "pending"
+        ) {
+          tabMatch =
+            appointmentStatus ===
+            "pending";
+        } else if (
+          activeTab === "confirmed"
+        ) {
+          tabMatch =
+            appointmentStatus ===
+            "confirmed";
+        } else if (
+          activeTab === "completed"
+        ) {
+          tabMatch =
+            appointmentStatus ===
+            "completed";
+        }
+
+        return (
+          searchMatch &&
+          departmentMatch &&
+          doctorMatch &&
+          statusMatch &&
+          typeMatch &&
+          dateMatch &&
+          tabMatch
+        );
+      }
     );
-  });
 
-  table.innerHTML = "";
+  table.innerHTML = filtered.length
+    ? filtered
+        .map((appointment, index) => {
+          const patientName =
+            appointment.patient_name ||
+            appointment.patient?.name ||
+            "—";
 
-  if (!list.length) {
-    table.innerHTML = `
+          const doctorName =
+            appointment.doctor_name ||
+            appointment.doctor?.name ||
+            "—";
+
+          const departmentName =
+            appointment.department_name ||
+            appointment.department?.name ||
+            "—";
+
+          const date =
+            appointment.appointment_date ||
+            appointment.date;
+
+          const time =
+            appointment.appointment_time ||
+            appointment.time;
+
+          return `
+            <tr>
+              <td>${index + 1}</td>
+
+              <td>
+                ${Helpers.escapeHTML(
+                  patientName
+                )}
+              </td>
+
+              <td>
+                ${Helpers.escapeHTML(
+                  appointment.file_number ||
+                  appointment.patient_file_number ||
+                  "—"
+                )}
+              </td>
+
+              <td>
+                ${Helpers.escapeHTML(
+                  doctorName
+                )}
+              </td>
+
+              <td>
+                ${Helpers.escapeHTML(
+                  departmentName
+                )}
+              </td>
+
+              <td>
+                ${Helpers.formatDate(date)}
+              </td>
+
+              <td>
+                ${Helpers.formatTime(time)}
+              </td>
+
+              <td>
+                ${Helpers.badge(
+                  appointment.status
+                )}
+              </td>
+
+              <td>
+                <div class="d-flex gap-1">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-primary"
+                    data-view-appointment="${Helpers.escapeHTML(
+                      appointment.id
+                    )}"
+                  >
+                    <i class="bi bi-eye"></i>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    data-edit-appointment="${Helpers.escapeHTML(
+                      appointment.id
+                    )}"
+                  >
+                    <i class="bi bi-pencil"></i>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    data-delete-appointment="${Helpers.escapeHTML(
+                      appointment.id
+                    )}"
+                  >
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        })
+        .join("")
+    : `
       <tr>
-        <td
-          colspan="20"
-          class="text-center text-muted py-5">
-          لا توجد مواعيد
+        <td colspan="20" class="text-center text-muted py-4">
+          لا توجد مواعيد مطابقة.
         </td>
       </tr>
     `;
 
-    return;
-  }
-
-  list.forEach((appointment, index) => {
-    const patient = appointment.patient_name || "—";
-
-    const doctor = appointment.doctor_name || "—";
-
-    const department = appointment.department_name || "—";
-
-    const date = appointment.appointment_date || appointment.date;
-
-    const time = appointment.appointment_time || appointment.time;
-
-    table.insertAdjacentHTML(
-      "beforeend",
-      `
-        <tr>
-
-          <td>${index + 1}</td>
-
-          <td>
-            <strong>
-              ${Helpers.escapeHTML(patient)}
-            </strong>
-          </td>
-
-          <td>
-            ${Helpers.escapeHTML(appointment.file_number || "—")}
-          </td>
-
-          <td>
-            ${Helpers.escapeHTML(doctor)}
-          </td>
-
-          <td>
-            ${Helpers.escapeHTML(department)}
-          </td>
-
-          <td>
-            ${Helpers.formatDate(date)}
-          </td>
-
-          <td>
-            ${Helpers.formatTime(time)}
-          </td>
-
-          <td>
-            ${Helpers.badge(appointment.status)}
-          </td>
-
-          <td>
-            <div class="d-flex gap-1">
-
-              <button
-                class="btn btn-sm btn-outline-info"
-                data-view-appointment="${appointment.id}">
-                <i class="bi bi-eye"></i>
-              </button>
-
-              <button
-                class="btn btn-sm btn-outline-primary"
-                data-edit-appointment="${appointment.id}">
-                <i class="bi bi-pencil"></i>
-              </button>
-
-              <button
-                class="btn btn-sm btn-outline-danger"
-                data-delete-appointment="${appointment.id}">
-                <i class="bi bi-trash"></i>
-              </button>
-
-            </div>
-          </td>
-
-        </tr>
-        `,
-    );
-  });
+  updateAppointmentStats();
 }
 
 function updateAppointmentStats() {
-  const total = appointmentsData.length;
+  const today =
+    Helpers.today();
 
-  const today = appointmentsData.filter(
-    (a) =>
-      String(a.appointment_date || a.date || "").slice(0, 10) ===
-      Helpers.today(),
-  ).length;
+  Helpers.setText(
+    "appointmentTotal",
+    appointmentsData.length
+  );
 
-  const pending = appointmentsData.filter(
-    (a) => Helpers.status(a.status) === "pending",
-  ).length;
+  Helpers.setText(
+    "appointmentToday",
+    appointmentsData.filter(
+      (item) =>
+        (
+          item.appointment_date ||
+          item.date
+        ) === today
+    ).length
+  );
 
-  const completed = appointmentsData.filter(
-    (a) => Helpers.status(a.status) === "completed",
-  ).length;
+  Helpers.setText(
+    "appointmentPending",
+    appointmentsData.filter(
+      (item) =>
+        Helpers.normalize(
+          item.status
+        ) === "pending"
+    ).length
+  );
 
-  Helpers.setText("appointmentTotal", total);
-
-  Helpers.setText("appointmentCount", total);
-
-  Helpers.setText("appointmentToday", today);
-
-  Helpers.setText("appointmentPending", pending);
-
-  Helpers.setText("appointmentCompleted", completed);
+  Helpers.setText(
+    "appointmentCompleted",
+    appointmentsData.filter(
+      (item) =>
+        Helpers.normalize(
+          item.status
+        ) === "completed"
+    ).length
+  );
 }
 
-function openAppointmentForm(appointment = null) {
-  editingAppointmentId = appointment?.id || null;
+function openAppointmentForm(
+  appointment = null
+) {
+  editingAppointmentId =
+    appointment?.id || null;
 
-  Helpers.setValue("appointmentId", appointment?.id || "");
+  Helpers.setValue(
+    "appointmentId",
+    appointment?.id || ""
+  );
 
-  Helpers.setValue("aPatient", appointment?.patient_id || "");
+  Helpers.setValue(
+    "aPatient",
+    appointment?.patient_id ||
+    appointment?.patient?.id ||
+    ""
+  );
 
-  Helpers.setValue("aDoctor", appointment?.doctor_id || "");
+  Helpers.setValue(
+    "aDoctor",
+    appointment?.doctor_id ||
+    appointment?.doctor?.id ||
+    ""
+  );
 
-  Helpers.setValue("aDepartment", appointment?.department_id || "");
+  Helpers.setValue(
+    "aDepartment",
+    appointment?.department_id ||
+    appointment?.department?.id ||
+    ""
+  );
 
-  Helpers.setValue("aService", appointment?.service_id || "");
+  Helpers.setValue(
+    "aService",
+    appointment?.service_id ||
+    appointment?.service?.id ||
+    ""
+  );
 
-  Helpers.setValue("aType", appointment?.type || "كشف");
+  Helpers.setValue(
+    "aType",
+    appointment?.type ||
+    ""
+  );
 
   Helpers.setValue(
     "aDate",
-    appointment?.appointment_date || appointment?.date
-      ? String(appointment?.appointment_date || appointment?.date || "").slice(
-          0,
-          10,
-        )
-      : Helpers.today(),
+    appointment?.appointment_date ||
+    appointment?.date ||
+    ""
   );
 
   Helpers.setValue(
     "aTime",
-    appointment?.appointment_time || appointment?.time || "",
+    appointment?.appointment_time ||
+    appointment?.time ||
+    ""
   );
 
-  Helpers.setValue("aStatus", appointment?.status || "pending");
+  Helpers.setValue(
+    "aStatus",
+    appointment?.status ||
+    "pending"
+  );
 
-  Helpers.setValue("aNotes", appointment?.notes || "");
+  Helpers.setValue(
+    "aNotes",
+    appointment?.notes ||
+    ""
+  );
 
-  showModal("appointmentModal");
+  const title =
+    document.getElementById(
+      "appointmentModalLabel"
+    );
+
+  if (title) {
+    title.textContent =
+      appointment
+        ? "تعديل الموعد"
+        : "إضافة موعد";
+  }
+
+  showModal(
+    "appointmentModal"
+  );
 }
 
 async function saveAppointment() {
-  const patient_id = Helpers.getValue("aPatient");
+  const patientId =
+    Helpers.getValue(
+      "aPatient"
+    );
 
-  const doctor_id = Helpers.getValue("aDoctor");
+  const doctorId =
+    Helpers.getValue(
+      "aDoctor"
+    );
 
-  const date = Helpers.getValue("aDate");
+  const departmentId =
+    Helpers.getValue(
+      "aDepartment"
+    );
 
-  const time = Helpers.getValue("aTime");
+  const date =
+    Helpers.getValue(
+      "aDate"
+    );
 
-  if (!patient_id || !doctor_id || !date || !time) {
-    Toast.warning("يرجى إدخال المريض والطبيب والتاريخ والوقت.");
+  const time =
+    Helpers.getValue(
+      "aTime"
+    );
+
+  if (!patientId) {
+    Toast.error(
+      "يرجى اختيار المريض."
+    );
+    return;
+  }
+
+  if (!doctorId) {
+    Toast.error(
+      "يرجى اختيار الطبيب."
+    );
+    return;
+  }
+
+  if (!departmentId) {
+    Toast.error(
+      "يرجى اختيار القسم."
+    );
+    return;
+  }
+
+  if (!date) {
+    Toast.error(
+      "يرجى اختيار تاريخ الموعد."
+    );
+    return;
+  }
+
+  if (!time) {
+    Toast.error(
+      "يرجى اختيار وقت الموعد."
+    );
     return;
   }
 
   const body = {
-    patient_id,
-    doctor_id,
-
-    department_id: Helpers.getValue("aDepartment") || null,
-
-    service_id: Helpers.getValue("aService") || null,
-
-    type: Helpers.getValue("aType"),
-
+    patient_id: patientId,
+    doctor_id: doctorId,
+    department_id: departmentId,
+    service_id:
+      Helpers.getValue(
+        "aService"
+      ) || null,
+    type:
+      Helpers.getValue(
+        "aType"
+      ),
     appointment_date: date,
     date,
-
     appointment_time: time,
     time,
-
-    status: Helpers.getValue("aStatus") || "pending",
-
-    notes: Helpers.getValue("aNotes"),
-
-    created_by: Auth.getUser()?.id || null,
+    status:
+      Helpers.getValue(
+        "aStatus"
+      ) || "pending",
+    notes:
+      Helpers.getValue(
+        "aNotes"
+      ).trim(),
+    created_by:
+      Auth.getUser()?.id || null
   };
 
   try {
     if (editingAppointmentId) {
-      await API.put(`/appointments/${editingAppointmentId}`, body);
+      await API.put(
+        `/appointments/${encodeURIComponent(
+          editingAppointmentId
+        )}`,
+        body
+      );
 
-      Toast.success("تم تحديث الموعد بنجاح.");
+      Toast.success(
+        "تم تحديث الموعد بنجاح."
+      );
     } else {
-      await API.post("/appointments", body);
+      await API.post(
+        "/appointments",
+        body
+      );
 
-      Toast.success("تمت إضافة الموعد بنجاح.");
+      Toast.success(
+        "تمت إضافة الموعد بنجاح."
+      );
     }
 
-    hideModal("appointmentModal");
+    hideModal(
+      "appointmentModal"
+    );
+
+    editingAppointmentId = null;
 
     await loadAppointments();
   } catch (error) {
-    Toast.error(error.message);
+    console.error(
+      "Save appointment error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر حفظ الموعد."
+    );
   }
 }
+
 
 /* =========================================================
 19. REPORTS
@@ -2381,501 +4299,1182 @@ async function saveAppointment() {
 let currentReportData = [];
 
 async function generateReport() {
-  const from = Helpers.getValue("fromDate");
+  const from =
+    Helpers.getValue(
+      "fromDate"
+    );
 
-  const to = Helpers.getValue("toDate");
+  const to =
+    Helpers.getValue(
+      "toDate"
+    );
 
   const department =
-    Helpers.getValue("reportDepartment") ||
-    Helpers.getValue("departmentFilter");
+    Helpers.getValue(
+      "reportDepartment"
+    ) ||
+    Helpers.getValue(
+      "departmentFilter"
+    );
 
-  const params = new URLSearchParams();
+  const params =
+    new URLSearchParams();
 
-  if (from) params.set("from", from);
-  if (to) params.set("to", to);
+  if (from) {
+    params.set("from", from);
+  }
+
+  if (to) {
+    params.set("to", to);
+  }
 
   if (department) {
-    params.set("department", department);
+    params.set(
+      "department",
+      department
+    );
   }
 
   try {
-    const result = await API.get(`/reports/summary?${params.toString()}`);
+    const query =
+      params.toString();
 
-    currentReportData = result;
+    const result =
+      await API.get(
+        `/reports/summary${
+          query
+            ? `?${query}`
+            : ""
+        }`
+      );
 
-    renderReport(result);
+    currentReportData =
+      result || {};
 
-    Toast.success("تم إنشاء التقرير بنجاح.");
+    renderReport(
+      currentReportData
+    );
+
+    Toast.success(
+      "تم إنشاء التقرير بنجاح."
+    );
   } catch (error) {
-    Toast.error(error.message);
+    console.error(
+      "Report error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر إنشاء التقرير."
+    );
   }
 }
 
 function renderReport(result) {
-  if (!result) return;
+  const statistics =
+    result?.statistics ||
+    result?.summary ||
+    result ||
+    {};
 
-  const statistics = result.statistics || result.summary || {};
+  const totalPatients =
+    statistics.totalPatients ??
+    statistics.total_patients ??
+    statistics.patients ??
+    0;
+
+  const totalAppointments =
+    statistics.totalAppointments ??
+    statistics.total_appointments ??
+    statistics.appointments ??
+    0;
+
+  const totalDoctors =
+    statistics.totalDoctors ??
+    statistics.total_doctors ??
+    statistics.doctors ??
+    0;
+
+  const totalServices =
+    statistics.totalServices ??
+    statistics.total_services ??
+    statistics.services ??
+    0;
 
   Helpers.setText(
     "totalPatients",
-    statistics.patients ?? statistics.totalPatients ?? 0,
+    totalPatients
   );
 
   Helpers.setText(
     "totalAppointments",
-    statistics.appointments ?? statistics.totalAppointments ?? 0,
+    totalAppointments
   );
 
   Helpers.setText(
     "totalDoctors",
-    statistics.doctors ?? statistics.totalDoctors ?? 0,
+    totalDoctors
   );
 
   Helpers.setText(
     "totalServices",
-    statistics.services ?? statistics.totalServices ?? 0,
+    totalServices
   );
 
-  const monthly = result.monthly || [];
+  const monthly =
+    result?.monthly ||
+    result?.monthlyData ||
+    statistics.monthly ||
+    [];
 
-  const monthlyChart = document.getElementById("monthlyChart");
+  renderMonthlyChart(
+    monthly
+  );
 
-  if (monthlyChart) {
-    monthlyChart.innerHTML = "";
+  const departments =
+    result?.departments ||
+    result?.departmentData ||
+    statistics.departments ||
+    [];
 
-    if (!monthly.length) {
-      monthlyChart.innerHTML = `
-        <div class="text-center w-100 py-5 text-muted">
-          لا توجد بيانات للمواعيد
-        </div>
-      `;
-    } else {
-      const max = Math.max(
-        ...monthly.map((item) => Number(item.total || 0)),
-        1,
-      );
+  renderDepartmentReport(
+    departments
+  );
 
-      monthly.forEach((item) => {
-        const value = Number(item.total || 0);
+  const progress =
+    document.getElementById(
+      "departmentProgress"
+    );
 
-        const height = Math.max(5, (value / max) * 100);
+  if (progress) {
+    progress.innerHTML =
+      Array.isArray(departments) &&
+      departments.length
+        ? departments
+            .map((item) => {
+              const name =
+                item.name ||
+                item.department_name ||
+                "قسم";
 
-        const label = item.month_name || item.month || item.month_number || "";
+              const value =
+                Number(
+                  item.total ??
+                  item.count ??
+                  item.appointments ??
+                  0
+                );
 
-        monthlyChart.insertAdjacentHTML(
-          "beforeend",
-          `
-            <div
-              class="d-flex flex-column align-items-center justify-content-end"
-              style="height:220px;flex:1;min-width:35px">
+              const max =
+                Math.max(
+                  1,
+                  ...departments.map(
+                    (entry) =>
+                      Number(
+                        entry.total ??
+                        entry.count ??
+                        entry.appointments ??
+                        0
+                      )
+                  )
+                );
 
-              <strong class="small">
-                ${value}
-              </strong>
+              const percent =
+                Math.round(
+                  (value / max) *
+                  100
+                );
 
-              <div
-                style="
-                  width:28px;
-                  height:${height}%;
-                  min-height:8px;
-                  background:var(--amrash-primary,#6fa8dc);
-                  border-radius:8px 8px 0 0;
-                ">
-              </div>
+              return `
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-1">
+                    <span>
+                      ${Helpers.escapeHTML(name)}
+                    </span>
+                    <span>
+                      ${value}
+                    </span>
+                  </div>
 
-              <small class="text-muted mt-2">
-                ${Helpers.escapeHTML(label)}
-              </small>
-
-            </div>
-            `,
-        );
-      });
-    }
-  }
-
-  const departments = result.departments || [];
-
-  const departmentTable = document.getElementById("departmentTable");
-
-  if (departmentTable) {
-    departmentTable.innerHTML = "";
-
-    departments.forEach((department, index) => {
-      departmentTable.insertAdjacentHTML(
-        "beforeend",
-        `
-          <tr>
-
-            <td>
-              ${index + 1}
-            </td>
-
-            <td>
-              ${Helpers.escapeHTML(
-                department.department_name || department.name || "—",
-              )}
-            </td>
-
-            <td>
-              ${department.patients || 0}
-            </td>
-
-            <td>
-              ${department.appointments || 0}
-            </td>
-
-            <td>
-              ${department.completed || 0}
-            </td>
-
-            <td>
-              ${department.cancelled || 0}
-            </td>
-
-            <td>
-              ${department.completion_rate ?? 0}%
-            </td>
-
-          </tr>
-          `,
-      );
-    });
-  }
-
-  const departmentProgress = document.getElementById("departmentProgress");
-
-  if (departmentProgress) {
-    departmentProgress.innerHTML = "";
-
-    departments.forEach((department) => {
-      const percentage = Number(
-        department.completion_rate || department.percentage || 0,
-      );
-
-      departmentProgress.insertAdjacentHTML(
-        "beforeend",
-        `
-          <div class="mb-3">
-
-            <div class="d-flex justify-content-between mb-1">
-              <span>
-                ${Helpers.escapeHTML(
-                  department.department_name || department.name || "—",
-                )}
-              </span>
-
-              <strong>
-                ${percentage}%
-              </strong>
-            </div>
-
-            <div class="progress">
-              <div
-                class="progress-bar"
-                style="width:${Math.min(100, Math.max(0, percentage))}%">
-              </div>
-            </div>
-
+                  <div class="progress">
+                    <div
+                      class="progress-bar"
+                      role="progressbar"
+                      style="width:${percent}%"
+                    ></div>
+                  </div>
+                </div>
+              `;
+            })
+            .join("")
+        : `
+          <div class="text-muted text-center py-3">
+            لا توجد بيانات.
           </div>
-          `,
-      );
-    });
+        `;
   }
 }
+
+function renderMonthlyChart(data) {
+  const container =
+    document.getElementById(
+      "monthlyChart"
+    );
+
+  if (!container) {
+    return;
+  }
+
+  if (!Array.isArray(data) || !data.length) {
+    container.innerHTML = `
+      <div class="text-muted text-center py-5">
+        لا توجد بيانات شهرية.
+      </div>
+    `;
+
+    return;
+  }
+
+  const max =
+    Math.max(
+      1,
+      ...data.map(
+        (item) =>
+          Number(
+            item.value ??
+            item.total ??
+            item.count ??
+            item.appointments ??
+            0
+          )
+      )
+    );
+
+  container.innerHTML = `
+    <div
+      class="d-flex align-items-end gap-3"
+      style="height:260px;overflow-x:auto"
+    >
+      ${data
+        .map((item) => {
+          const value =
+            Number(
+              item.value ??
+              item.total ??
+              item.count ??
+              item.appointments ??
+              0
+            );
+
+          const height =
+            Math.max(
+              5,
+              Math.round(
+                (value / max) * 100
+              )
+            );
+
+          const label =
+            item.label ||
+            item.month ||
+            item.name ||
+            "";
+
+          return `
+            <div
+              class="text-center"
+              style="
+                min-width:55px;
+                height:100%;
+                display:flex;
+                flex-direction:column;
+                justify-content:end;
+              "
+            >
+              <small class="mb-1">
+                ${value}
+              </small>
+
+              <div
+                class="bg-primary rounded-top"
+                style="
+                  height:${height}%;
+                  min-height:5px;
+                "
+              ></div>
+
+              <small class="mt-2 text-muted">
+                ${Helpers.escapeHTML(label)}
+              </small>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderDepartmentReport(data) {
+  const table =
+    document.getElementById(
+      "departmentTable"
+    );
+
+  if (!table) {
+    return;
+  }
+
+  const tbody =
+    table.querySelector("tbody") ||
+    table;
+
+  if (!Array.isArray(data) || !data.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="10" class="text-center text-muted py-4">
+          لا توجد بيانات.
+        </td>
+      </tr>
+    `;
+
+    return;
+  }
+
+  tbody.innerHTML =
+    data
+      .map((item, index) => {
+        const name =
+          item.name ||
+          item.department_name ||
+          "—";
+
+        const total =
+          item.total ??
+          item.count ??
+          item.appointments ??
+          0;
+
+        return `
+          <tr>
+            <td>${index + 1}</td>
+
+            <td>
+              ${Helpers.escapeHTML(name)}
+            </td>
+
+            <td>
+              ${total}
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+}
+
 
 /* =========================================================
 20. SETTINGS
 ========================================================= */
 
+let settingsData = {};
+let usersData = [];
+let editingUserId = null;
+
 async function loadSettings() {
-  const form = document.getElementById("settingsForm");
+  const page =
+    getCurrentPage();
 
-  if (!form) return;
+  if (page !== "settings.html") {
+    return;
+  }
 
   try {
-    const result = await API.get("/settings");
+    const result =
+      await API.get("/settings");
 
-    const settings = result?.settings || result?.data || result || {};
+    settingsData =
+      result?.settings ||
+      result?.data ||
+      result ||
+      {};
 
-    Object.entries(settings).forEach(([key, value]) => {
-      const el =
-        document.getElementById(key) ||
-        document.querySelector(`[name="${key}"]`);
+    applySettingsToForm(
+      settingsData
+    );
 
-      if (!el) return;
+    await loadUsers();
+    await loadBackupList();
+  } catch (error) {
+    console.error(
+      "Settings load error:",
+      error
+    );
 
-      if (el.type === "checkbox") {
-        el.checked = value === true || value === 1 || value === "1";
-      } else {
-        el.value = value ?? "";
+    Toast.error(
+      error.message ||
+      "تعذر تحميل الإعدادات."
+    );
+  }
+}
+
+function applySettingsToForm(
+  settings
+) {
+  const map = {
+    organizationName:
+      "orgName",
+    clinicName:
+      "orgName",
+    organizationTax:
+      "orgTax",
+    taxNumber:
+      "orgTax",
+    organizationPhone:
+      "orgPhone",
+    phone:
+      "orgPhone",
+    organizationEmail:
+      "orgEmail",
+    email:
+      "orgEmail",
+    organizationWebsite:
+      "orgWebsite",
+    website:
+      "orgWebsite",
+    currency:
+      "orgCurrency",
+    organizationAddress:
+      "orgAddress",
+    address:
+      "orgAddress",
+    organizationAbout:
+      "orgAbout",
+    about:
+      "orgAbout",
+
+    adminName:
+      "adminName",
+    adminTitle:
+      "adminTitle",
+    adminEmail:
+      "adminEmail",
+    adminPhone:
+      "adminPhone",
+    adminAvatar:
+      "adminAvatar",
+    adminDisplayName:
+      "adminDisplayName",
+    adminDisplayRole:
+      "adminDisplayRole",
+
+    language:
+      "sysLang",
+    timezone:
+      "sysTimezone",
+    dateFormat:
+      "sysDateFormat",
+    perPage:
+      "sysPerPage",
+    notificationEmail:
+      "sysNotifEmail",
+    sound:
+      "sysSound",
+    darkMode:
+      "sysDark",
+
+    appointmentDuration:
+      "apptDuration",
+    appointmentStart:
+      "apptStart",
+    appointmentEnd:
+      "apptEnd",
+    appointmentMaxPerDoctor:
+      "apptMaxPerDoctor",
+    appointmentCancelWindow:
+      "apptCancelWindow",
+    appointmentAllowOverlap:
+      "apptAllowOverlap"
+  };
+
+  Object.entries(map).forEach(
+    ([key, id]) => {
+      const element =
+        document.getElementById(id);
+
+      if (!element) {
+        return;
       }
-    });
-  } catch (error) {
-    Toast.error(error.message);
-  }
+
+      const value =
+        settings[key];
+
+      if (
+        element.type ===
+          "checkbox" ||
+        element.type ===
+          "radio"
+      ) {
+        element.checked =
+          value === true ||
+          value === 1 ||
+          value === "1" ||
+          value === "true" ||
+          value === "on";
+      } else if (
+        value !== undefined &&
+        value !== null
+      ) {
+        element.value =
+          value;
+      }
+    }
+  );
 }
 
-async function saveSettings() {
-  const form = document.getElementById("settingsForm");
+function collectSettings() {
+  const settings = {
+    organizationName:
+      Helpers.getValue(
+        "orgName"
+      ),
+    organizationTax:
+      Helpers.getValue(
+        "orgTax"
+      ),
+    organizationPhone:
+      Helpers.getValue(
+        "orgPhone"
+      ),
+    organizationEmail:
+      Helpers.getValue(
+        "orgEmail"
+      ),
+    organizationWebsite:
+      Helpers.getValue(
+        "orgWebsite"
+      ),
+    currency:
+      Helpers.getValue(
+        "orgCurrency"
+      ),
+    organizationAddress:
+      Helpers.getValue(
+        "orgAddress"
+      ),
+    organizationAbout:
+      Helpers.getValue(
+        "orgAbout"
+      ),
 
-  if (!form) return;
+    adminName:
+      Helpers.getValue(
+        "adminName"
+      ),
+    adminTitle:
+      Helpers.getValue(
+        "adminTitle"
+      ),
+    adminEmail:
+      Helpers.getValue(
+        "adminEmail"
+      ),
+    adminPhone:
+      Helpers.getValue(
+        "adminPhone"
+      ),
+    adminAvatar:
+      Helpers.getValue(
+        "adminAvatar"
+      ),
+    adminDisplayName:
+      Helpers.getValue(
+        "adminDisplayName"
+      ),
+    adminDisplayRole:
+      Helpers.getValue(
+        "adminDisplayRole"
+      ),
 
-  const body = {};
+    language:
+      Helpers.getValue(
+        "sysLang"
+      ),
+    timezone:
+      Helpers.getValue(
+        "sysTimezone"
+      ),
+    dateFormat:
+      Helpers.getValue(
+        "sysDateFormat"
+      ),
+    perPage:
+      Helpers.getValue(
+        "sysPerPage"
+      ),
+    notificationEmail:
+      document.getElementById(
+        "sysNotifEmail"
+      )?.checked
+        ? "1"
+        : "0",
+    sound:
+      document.getElementById(
+        "sysSound"
+      )?.checked
+        ? "1"
+        : "0",
+    darkMode:
+      document.getElementById(
+        "sysDark"
+      )?.checked
+        ? "1"
+        : "0",
 
-  form.querySelectorAll("input,select,textarea").forEach((el) => {
-    if (!el.name && !el.id) return;
+    appointmentDuration:
+      Helpers.getValue(
+        "apptDuration"
+      ),
+    appointmentStart:
+      Helpers.getValue(
+        "apptStart"
+      ),
+    appointmentEnd:
+      Helpers.getValue(
+        "apptEnd"
+      ),
+    appointmentMaxPerDoctor:
+      Helpers.getValue(
+        "apptMaxPerDoctor"
+      ),
+    appointmentCancelWindow:
+      Helpers.getValue(
+        "apptCancelWindow"
+      ),
+    appointmentAllowOverlap:
+      document.getElementById(
+        "apptAllowOverlap"
+      )?.checked
+        ? "1"
+        : "0"
+  };
 
-    const key = el.name || el.id;
+  return settings;
+}
 
-    body[key] = el.type === "checkbox" ? el.checked : el.value;
-  });
+async function saveSettings(
+  partialSettings = null
+) {
+  const settings =
+    partialSettings ||
+    collectSettings();
 
   try {
-    await API.put("/settings", body);
+    const result =
+      await API.put(
+        "/settings",
+        {
+          settings
+        }
+      );
 
-    Toast.success("تم حفظ الإعدادات بنجاح.");
+    settingsData = {
+      ...settingsData,
+      ...settings
+    };
+
+    Toast.success(
+      result?.message ||
+      "تم حفظ الإعدادات بنجاح."
+    );
+
+    return result;
   } catch (error) {
-    Toast.error(error.message);
+    console.error(
+      "Save settings error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر حفظ الإعدادات."
+    );
+
+    throw error;
   }
 }
-
-/* =========================================================
+   /* =========================================================
 21. DELETE
 ========================================================= */
 
-async function deleteEntity(endpoint, id, reload) {
-  if (!id) return;
+async function deleteEntity(
+  endpoint,
+  id,
+  reload
+) {
+  if (!id) {
+    Toast.warning(
+      "لم يتم تحديد العنصر المطلوب حذفه."
+    );
+    return;
+  }
 
-  const confirmed = window.confirm("هل أنت متأكد من حذف هذا العنصر؟");
+  const confirmed =
+    window.confirm(
+      "هل أنت متأكد من حذف هذا العنصر؟"
+    );
 
-  if (!confirmed) return;
+  if (!confirmed) {
+    return;
+  }
 
   try {
-    await API.del(`${endpoint}/${id}`);
+    await API.del(
+      `${endpoint}/${encodeURIComponent(id)}`
+    );
 
-    Toast.success("تم الحذف بنجاح.");
+    Toast.success(
+      "تم الحذف بنجاح."
+    );
 
     if (typeof reload === "function") {
       await reload();
     }
   } catch (error) {
-    Toast.error(error.message);
+    console.error(
+      "Delete error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر حذف العنصر."
+    );
   }
 }
+
 
 /* =========================================================
 22. EVENTS
 ========================================================= */
 
 function initPageEvents() {
-  document.addEventListener("click", async (event) => {
-    const departmentEdit = event.target.closest("[data-edit-department]");
+  if (
+    document.body.dataset
+      .amrashPageEventsBound
+  ) {
+    return;
+  }
 
-    if (departmentEdit) {
-      const id = departmentEdit.dataset.editDepartment;
+  document.body.dataset
+    .amrashPageEventsBound = "1";
 
-      const department = departmentsData.find(
-        (item) => String(item.id) === String(id),
-      );
+  document.addEventListener(
+    "click",
+    async (event) => {
 
-      if (department) {
-        openDepartmentForm(department);
+      /* -----------------------------------------------------
+         PROFILE
+      ----------------------------------------------------- */
+
+      const profileOpen =
+        event.target.closest(
+          "[data-open-profile],#openProfile"
+        );
+
+      if (profileOpen) {
+        event.preventDefault();
+        openProfileModal();
+        return;
       }
 
-      return;
-    }
 
-    const departmentDelete = event.target.closest("[data-delete-department]");
+      /* -----------------------------------------------------
+         DEPARTMENT EDIT
+      ----------------------------------------------------- */
 
-    if (departmentDelete) {
-      await deleteEntity(
-        "/departments",
-        departmentDelete.dataset.deleteDepartment,
-        loadDepartments,
-      );
+      const departmentEdit =
+        event.target.closest(
+          "[data-edit-department]"
+        );
 
-      return;
-    }
+      if (departmentEdit) {
+        const id =
+          departmentEdit.dataset
+            .editDepartment;
 
-    const departmentView = event.target.closest("[data-view-department]");
+        const department =
+          departmentsData.find(
+            (item) =>
+              String(item.id) ===
+              String(id)
+          );
 
-    if (departmentView) {
-      const department = departmentsData.find(
-        (item) =>
-          String(item.id) === String(departmentView.dataset.viewDepartment),
-      );
+        if (department) {
+          openDepartmentForm(
+            department
+          );
+        }
 
-      if (department) {
-        const body = document.getElementById("departmentViewBody");
+        return;
+      }
 
-        if (body) {
-          body.innerHTML = `
+
+      /* -----------------------------------------------------
+         DEPARTMENT DELETE
+      ----------------------------------------------------- */
+
+      const departmentDelete =
+        event.target.closest(
+          "[data-delete-department]"
+        );
+
+      if (departmentDelete) {
+        await deleteEntity(
+          "/departments",
+          departmentDelete.dataset
+            .deleteDepartment,
+          loadDepartments
+        );
+
+        return;
+      }
+
+
+      /* -----------------------------------------------------
+         DEPARTMENT VIEW
+      ----------------------------------------------------- */
+
+      const departmentView =
+        event.target.closest(
+          "[data-view-department]"
+        );
+
+      if (departmentView) {
+        const department =
+          departmentsData.find(
+            (item) =>
+              String(item.id) ===
+              String(
+                departmentView.dataset
+                  .viewDepartment
+              )
+          );
+
+        if (department) {
+          const body =
+            document.getElementById(
+              "departmentViewBody"
+            );
+
+          if (body) {
+            body.innerHTML = `
               <div class="mb-3">
                 <strong>اسم القسم:</strong>
-                ${Helpers.escapeHTML(
-                  department.name || department.department_name || "—",
-                )}
+                <div>
+                  ${Helpers.escapeHTML(
+                    department.name ||
+                    department.department_name ||
+                    "—"
+                  )}
+                </div>
               </div>
 
               <div class="mb-3">
                 <strong>الحالة:</strong>
-                ${Helpers.badge(department.status)}
+                <div class="mt-1">
+                  ${Helpers.badge(
+                    department.status
+                  )}
+                </div>
               </div>
 
               <div>
                 <strong>الوصف:</strong>
+
                 <p class="text-muted mt-2">
-                  ${Helpers.escapeHTML(department.description || "لا يوجد وصف")}
+                  ${Helpers.escapeHTML(
+                    department.description ||
+                    "لا يوجد وصف"
+                  )}
                 </p>
               </div>
             `;
+          }
+
+          showModal(
+            "departmentViewModal"
+          );
         }
 
-        showModal("departmentViewModal");
+        return;
       }
 
-      return;
-    }
 
-    const doctorEdit = event.target.closest("[data-edit-doctor]");
+      /* -----------------------------------------------------
+         DOCTOR EDIT
+      ----------------------------------------------------- */
 
-    if (doctorEdit) {
-      const doctor = doctorsData.find(
-        (item) => String(item.id) === String(doctorEdit.dataset.editDoctor),
-      );
+      const doctorEdit =
+        event.target.closest(
+          "[data-edit-doctor]"
+        );
 
-      if (doctor) {
-        openDoctorForm(doctor);
+      if (doctorEdit) {
+        const doctor =
+          doctorsData.find(
+            (item) =>
+              String(item.id) ===
+              String(
+                doctorEdit.dataset
+                  .editDoctor
+              )
+          );
+
+        if (doctor) {
+          openDoctorForm(
+            doctor
+          );
+        }
+
+        return;
       }
 
-      return;
-    }
 
-    const doctorDelete = event.target.closest("[data-delete-doctor]");
+      /* -----------------------------------------------------
+         DOCTOR DELETE
+      ----------------------------------------------------- */
 
-    if (doctorDelete) {
-      await deleteEntity(
-        "/doctors",
-        doctorDelete.dataset.deleteDoctor,
-        loadDoctors,
-      );
+      const doctorDelete =
+        event.target.closest(
+          "[data-delete-doctor]"
+        );
 
-      return;
-    }
+      if (doctorDelete) {
+        await deleteEntity(
+          "/doctors",
+          doctorDelete.dataset
+            .deleteDoctor,
+          loadDoctors
+        );
 
-    const patientEdit = event.target.closest("[data-edit-patient]");
-
-    if (patientEdit) {
-      const patient = patientsData.find(
-        (item) => String(item.id) === String(patientEdit.dataset.editPatient),
-      );
-
-      if (patient) {
-        openPatientForm(patient);
+        return;
       }
 
-      return;
-    }
 
-    const patientDelete = event.target.closest("[data-delete-patient]");
+      /* -----------------------------------------------------
+         PATIENT EDIT
+      ----------------------------------------------------- */
 
-    if (patientDelete) {
-      await deleteEntity(
-        "/patients",
-        patientDelete.dataset.deletePatient,
-        loadPatients,
-      );
+      const patientEdit =
+        event.target.closest(
+          "[data-edit-patient]"
+        );
 
-      return;
-    }
+      if (patientEdit) {
+        const patient =
+          patientsData.find(
+            (item) =>
+              String(item.id) ===
+              String(
+                patientEdit.dataset
+                  .editPatient
+              )
+          );
 
-    const serviceEdit = event.target.closest("[data-edit-service]");
+        if (patient) {
+          openPatientForm(
+            patient
+          );
+        }
 
-    if (serviceEdit) {
-      const service = servicesData.find(
-        (item) => String(item.id) === String(serviceEdit.dataset.editService),
-      );
-
-      if (service) {
-        openServiceForm(service);
+        return;
       }
 
-      return;
-    }
 
-    const serviceDelete = event.target.closest("[data-delete-service]");
+      /* -----------------------------------------------------
+         PATIENT DELETE
+      ----------------------------------------------------- */
 
-    if (serviceDelete) {
-      await deleteEntity(
-        "/services",
-        serviceDelete.dataset.deleteService,
-        loadServices,
-      );
+      const patientDelete =
+        event.target.closest(
+          "[data-delete-patient]"
+        );
 
-      return;
-    }
+      if (patientDelete) {
+        await deleteEntity(
+          "/patients",
+          patientDelete.dataset
+            .deletePatient,
+          loadPatients
+        );
 
-    const appointmentEdit = event.target.closest("[data-edit-appointment]");
-
-    if (appointmentEdit) {
-      const appointment = appointmentsData.find(
-        (item) =>
-          String(item.id) === String(appointmentEdit.dataset.editAppointment),
-      );
-
-      if (appointment) {
-        openAppointmentForm(appointment);
+        return;
       }
 
-      return;
-    }
 
-    const appointmentDelete = event.target.closest("[data-delete-appointment]");
+      /* -----------------------------------------------------
+         SERVICE EDIT
+      ----------------------------------------------------- */
 
-    if (appointmentDelete) {
-      await deleteEntity(
-        "/appointments",
-        appointmentDelete.dataset.deleteAppointment,
-        loadAppointments,
-      );
+      const serviceEdit =
+        event.target.closest(
+          "[data-edit-service]"
+        );
 
-      return;
-    }
+      if (serviceEdit) {
+        const service =
+          servicesData.find(
+            (item) =>
+              String(item.id) ===
+              String(
+                serviceEdit.dataset
+                  .editService
+              )
+          );
 
-    const appointmentView = event.target.closest("[data-view-appointment]");
+        if (service) {
+          openServiceForm(
+            service
+          );
+        }
 
-    if (appointmentView) {
-      const appointment = appointmentsData.find(
-        (item) =>
-          String(item.id) === String(appointmentView.dataset.viewAppointment),
-      );
+        return;
+      }
 
-      if (appointment) {
-        const body = document.getElementById("appointmentViewBody");
 
-        if (body) {
-          body.innerHTML = `
+      /* -----------------------------------------------------
+         SERVICE DELETE
+      ----------------------------------------------------- */
+
+      const serviceDelete =
+        event.target.closest(
+          "[data-delete-service]"
+        );
+
+      if (serviceDelete) {
+        await deleteEntity(
+          "/services",
+          serviceDelete.dataset
+            .deleteService,
+          loadServices
+        );
+
+        return;
+      }
+
+
+      /* -----------------------------------------------------
+         APPOINTMENT EDIT
+      ----------------------------------------------------- */
+
+      const appointmentEdit =
+        event.target.closest(
+          "[data-edit-appointment]"
+        );
+
+      if (appointmentEdit) {
+        const appointment =
+          appointmentsData.find(
+            (item) =>
+              String(item.id) ===
+              String(
+                appointmentEdit.dataset
+                  .editAppointment
+              )
+          );
+
+        if (appointment) {
+          openAppointmentForm(
+            appointment
+          );
+        }
+
+        return;
+      }
+
+
+      /* -----------------------------------------------------
+         APPOINTMENT DELETE
+      ----------------------------------------------------- */
+
+      const appointmentDelete =
+        event.target.closest(
+          "[data-delete-appointment]"
+        );
+
+      if (appointmentDelete) {
+        await deleteEntity(
+          "/appointments",
+          appointmentDelete.dataset
+            .deleteAppointment,
+          loadAppointments
+        );
+
+        return;
+      }
+
+
+      /* -----------------------------------------------------
+         APPOINTMENT VIEW
+      ----------------------------------------------------- */
+
+      const appointmentView =
+        event.target.closest(
+          "[data-view-appointment]"
+        );
+
+      if (appointmentView) {
+        const appointment =
+          appointmentsData.find(
+            (item) =>
+              String(item.id) ===
+              String(
+                appointmentView.dataset
+                  .viewAppointment
+              )
+          );
+
+        if (appointment) {
+          const body =
+            document.getElementById(
+              "appointmentViewBody"
+            );
+
+          if (body) {
+            body.innerHTML = `
               <div class="row g-3">
 
                 <div class="col-md-6">
                   <strong>المريض</strong>
                   <div>
-                    ${Helpers.escapeHTML(appointment.patient_name || "—")}
+                    ${Helpers.escapeHTML(
+                      appointment.patient_name ||
+                      appointment.patient?.name ||
+                      "—"
+                    )}
                   </div>
                 </div>
 
                 <div class="col-md-6">
                   <strong>الطبيب</strong>
                   <div>
-                    ${Helpers.escapeHTML(appointment.doctor_name || "—")}
+                    ${Helpers.escapeHTML(
+                      appointment.doctor_name ||
+                      appointment.doctor?.name ||
+                      "—"
+                    )}
                   </div>
                 </div>
 
                 <div class="col-md-6">
                   <strong>القسم</strong>
                   <div>
-                    ${Helpers.escapeHTML(appointment.department_name || "—")}
+                    ${Helpers.escapeHTML(
+                      appointment.department_name ||
+                      appointment.department?.name ||
+                      "—"
+                    )}
                   </div>
                 </div>
 
@@ -2883,7 +5482,8 @@ function initPageEvents() {
                   <strong>التاريخ</strong>
                   <div>
                     ${Helpers.formatDate(
-                      appointment.appointment_date || appointment.date,
+                      appointment.appointment_date ||
+                      appointment.date
                     )}
                   </div>
                 </div>
@@ -2892,93 +5492,219 @@ function initPageEvents() {
                   <strong>الوقت</strong>
                   <div>
                     ${Helpers.formatTime(
-                      appointment.appointment_time || appointment.time,
+                      appointment.appointment_time ||
+                      appointment.time
                     )}
                   </div>
                 </div>
 
                 <div class="col-md-6">
                   <strong>الحالة</strong>
-                  <div>
-                    ${Helpers.badge(appointment.status)}
+                  <div class="mt-1">
+                    ${Helpers.badge(
+                      appointment.status
+                    )}
                   </div>
                 </div>
 
                 <div class="col-12">
                   <strong>الملاحظات</strong>
+
                   <p class="text-muted mt-2">
                     ${Helpers.escapeHTML(
-                      appointment.notes || "لا توجد ملاحظات",
+                      appointment.notes ||
+                      "لا توجد ملاحظات"
                     )}
                   </p>
                 </div>
 
               </div>
             `;
+          }
+
+          showModal(
+            "appointmentViewModal"
+          );
         }
 
-        showModal("appointmentViewModal");
+        return;
       }
 
-      return;
+
+      /* -----------------------------------------------------
+         ADD BUTTONS
+      ----------------------------------------------------- */
+
+      const addButton =
+        event.target.closest(
+          "[data-add-department]," +
+          "[data-add-doctor]," +
+          "[data-add-patient]," +
+          "[data-add-service]," +
+          "[data-add-appointment]"
+        );
+
+      if (addButton) {
+        event.preventDefault();
+
+        if (
+          addButton.hasAttribute(
+            "data-add-department"
+          )
+        ) {
+          openDepartmentForm();
+          return;
+        }
+
+        if (
+          addButton.hasAttribute(
+            "data-add-doctor"
+          )
+        ) {
+          openDoctorForm();
+          return;
+        }
+
+        if (
+          addButton.hasAttribute(
+            "data-add-patient"
+          )
+        ) {
+          openPatientForm();
+          return;
+        }
+
+        if (
+          addButton.hasAttribute(
+            "data-add-service"
+          )
+        ) {
+          openServiceForm();
+          return;
+        }
+
+        if (
+          addButton.hasAttribute(
+            "data-add-appointment"
+          )
+        ) {
+          openAppointmentForm();
+          return;
+        }
+      }
+
+
+      /* -----------------------------------------------------
+         BOOTSTRAP MODAL ADD BUTTONS
+      ----------------------------------------------------- */
+
+      const modalButton =
+        event.target.closest(
+          "[data-bs-toggle='modal'][data-bs-target]"
+        );
+
+      if (modalButton) {
+        const target =
+          modalButton.getAttribute(
+            "data-bs-target"
+          );
+
+        if (
+          target ===
+          "#departmentModal"
+        ) {
+          openDepartmentForm();
+        }
+
+        if (
+          target ===
+          "#doctorModal"
+        ) {
+          openDoctorForm();
+        }
+
+        if (
+          target ===
+          "#patientModal"
+        ) {
+          openPatientForm();
+        }
+
+        if (
+          target ===
+          "#serviceModal"
+        ) {
+          openServiceForm();
+        }
+
+        if (
+          target ===
+          "#appointmentModal"
+        ) {
+          openAppointmentForm();
+        }
+      }
+
+
+      /* -----------------------------------------------------
+         NOTIFICATION
+      ----------------------------------------------------- */
+
+      const notification =
+        event.target.closest(
+          "[data-notification-id]"
+        );
+
+      if (notification) {
+        return;
+      }
+
+
+      /* -----------------------------------------------------
+         SETTINGS USERS
+      ----------------------------------------------------- */
+
+      const editUser =
+        event.target.closest(
+          "[data-edit-user]"
+        );
+
+      if (editUser) {
+        const user =
+          usersData.find(
+            (item) =>
+              String(item.id) ===
+              String(
+                editUser.dataset.editUser
+              )
+          );
+
+        if (user) {
+          openUserForm(user);
+        }
+
+        return;
+      }
+
+      const deleteUser =
+        event.target.closest(
+          "[data-delete-user]"
+        );
+
+      if (deleteUser) {
+        await deleteEntity(
+          "/users",
+          deleteUser.dataset
+            .deleteUser,
+          loadUsers
+        );
+
+        return;
+      }
     }
-
-    /* أزرار الإضافة */
-    const modalButton = event.target.closest(
-      "[data-bs-toggle='modal'][data-bs-target]",
-    );
-
-    if (modalButton) {
-      const target = modalButton.getAttribute("data-bs-target");
-
-      if (target === "#departmentModal") {
-        openDepartmentForm();
-      }
-
-      if (target === "#doctorModal") {
-        openDoctorForm();
-      }
-
-      if (target === "#patientModal") {
-        openPatientForm();
-      }
-
-      if (target === "#serviceModal") {
-        openServiceForm();
-      }
-
-      if (target === "#appointmentModal") {
-        openAppointmentForm();
-      }
-    }
-
-    const directAdd = event.target.closest(
-      "[data-add-department],[data-add-doctor],[data-add-patient],[data-add-service],[data-add-appointment]",
-    );
-
-    if (directAdd) {
-      if (directAdd.hasAttribute("data-add-department")) {
-        openDepartmentForm();
-      }
-
-      if (directAdd.hasAttribute("data-add-doctor")) {
-        openDoctorForm();
-      }
-
-      if (directAdd.hasAttribute("data-add-patient")) {
-        openPatientForm();
-      }
-
-      if (directAdd.hasAttribute("data-add-service")) {
-        openServiceForm();
-      }
-
-      if (directAdd.hasAttribute("data-add-appointment")) {
-        openAppointmentForm();
-      }
-    }
-  });
+  );
 }
+
 
 /* =========================================================
 23. SEARCH / FILTERS
@@ -2999,36 +5725,74 @@ function initFilters() {
     "apptSearch",
     "filterDoctor",
     "filterType",
-    "filterDate",
+    "filterDate"
   ];
 
   filterIds.forEach((id) => {
-    const element = document.getElementById(id);
+    const element =
+      document.getElementById(id);
 
-    if (!element) return;
+    if (!element) {
+      return;
+    }
 
-    element.addEventListener("input", renderFilteredData);
+    if (
+      element.dataset
+        .amrashFilterBound
+    ) {
+      return;
+    }
 
-    element.addEventListener("change", renderFilteredData);
+    element.dataset
+      .amrashFilterBound = "1";
+
+    element.addEventListener(
+      "input",
+      renderFilteredData
+    );
+
+    element.addEventListener(
+      "change",
+      renderFilteredData
+    );
   });
 
-  document.addEventListener("click", (event) => {
-    const reset = event.target.closest("#resetFilters,[data-reset-filters]");
+  if (
+    document.body.dataset
+      .amrashResetBound
+  ) {
+    return;
+  }
 
-    if (!reset) return;
+  document.body.dataset
+    .amrashResetBound = "1";
 
-    event.preventDefault();
+  document.addEventListener(
+    "click",
+    (event) => {
+      const reset =
+        event.target.closest(
+          "#resetFilters,[data-reset-filters]"
+        );
 
-    filterIds.forEach((id) => {
-      const element = document.getElementById(id);
-
-      if (element) {
-        element.value = "";
+      if (!reset) {
+        return;
       }
-    });
 
-    renderFilteredData();
-  });
+      event.preventDefault();
+
+      filterIds.forEach((id) => {
+        const element =
+          document.getElementById(id);
+
+        if (element) {
+          element.value = "";
+        }
+      });
+
+      renderFilteredData();
+    }
+  );
 }
 
 function renderFilteredData() {
@@ -3039,751 +5803,2190 @@ function renderFilteredData() {
   renderAppointments();
 }
 
+
 /* =========================================================
 24. APPOINTMENT TABS
 ========================================================= */
 
 function initAppointmentTabs() {
-  document.addEventListener("click", (event) => {
-    const tab = event.target.closest("#apptTabs [data-tab]");
+  if (
+    document.body.dataset
+      .amrashAppointmentTabsBound
+  ) {
+    return;
+  }
 
-    if (!tab) return;
+  document.body.dataset
+    .amrashAppointmentTabsBound = "1";
 
-    event.preventDefault();
+  document.addEventListener(
+    "click",
+    (event) => {
+      const tab =
+        event.target.closest(
+          "#apptTabs [data-tab]"
+        );
 
-    document.querySelectorAll("#apptTabs [data-tab]").forEach((item) => {
-      item.classList.remove("active");
-    });
+      if (!tab) {
+        return;
+      }
 
-    tab.classList.add("active");
+      event.preventDefault();
 
-    renderAppointments();
-  });
+      document
+        .querySelectorAll(
+          "#apptTabs [data-tab]"
+        )
+        .forEach((item) => {
+          item.classList.remove(
+            "active"
+          );
+        });
+
+      tab.classList.add("active");
+
+      renderAppointments();
+    }
+  );
 }
+
 
 /* =========================================================
 25. FORMS
 ========================================================= */
 
-function initForms() {
-  const departmentForm = document.getElementById("departmentForm");
-
-  departmentForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await saveDepartment();
-  });
-
-  const doctorForm = document.getElementById("doctorForm");
-
-  doctorForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await saveDoctor();
-  });
-
-  const patientForm = document.getElementById("patientForm");
-
-  patientForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await savePatient();
-  });
-
-  const serviceForm = document.getElementById("serviceForm");
-
-  serviceForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await saveService();
-  });
-
-  const appointmentForm = document.getElementById("appointmentForm");
-
-  appointmentForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await saveAppointment();
-  });
-
-  document
-    .querySelectorAll("#generateReport,#generateReportBtn")
-    .forEach((button) => {
-      button.addEventListener("click", generateReport);
-    });
-
-  document
-    .querySelectorAll("#saveAllSettings,#saveSystemBtn")
-    .forEach((button) => {
-      button.addEventListener("click", saveSettings);
-    });
-}
-
-/* =========================================================
-26. EXPORT CSV / PRINT
-========================================================= */
-
-function exportTableToCSV(table, filename = "amrash-report.csv") {
-  let target = table;
-
-  if (typeof table === "string") {
-    target = document.querySelector(table) || document.getElementById(table);
-  }
-
-  if (!target) {
-    Toast.warning("لا يوجد جدول لتصديره.");
+function bindSubmit(
+  form,
+  callback,
+  datasetKey = "amrashBound"
+) {
+  if (!form) {
     return;
   }
 
-  const rows = Array.from(target.querySelectorAll("tr"));
+  if (form.dataset[datasetKey]) {
+    return;
+  }
 
-  const csv = rows
-    .map((row) => {
-      const cells = Array.from(row.querySelectorAll("th,td"));
+  form.dataset[datasetKey] = "1";
 
-      return cells
-        .map((cell) => {
-          const value = cell.innerText.replace(/\s+/g, " ").trim();
+  form.addEventListener(
+    "submit",
+    async (event) => {
+      event.preventDefault();
+      await callback();
+    }
+  );
+}
 
-          return `"${value.replace(/"/g, '""')}"`;
-        })
-        .join(",");
-    })
-    .join("\n");
+function initForms() {
+  bindSubmit(
+    document.getElementById(
+      "departmentForm"
+    ),
+    saveDepartment
+  );
 
-  const blob = new Blob(["\uFEFF" + csv], {
-    type: "text/csv;charset=utf-8;",
-  });
+  bindSubmit(
+    document.getElementById(
+      "doctorForm"
+    ),
+    saveDoctor
+  );
 
-  const url = URL.createObjectURL(blob);
+  bindSubmit(
+    document.getElementById(
+      "patientForm"
+    ),
+    savePatient
+  );
 
-  const link = document.createElement("a");
+  bindSubmit(
+    document.getElementById(
+      "serviceForm"
+    ),
+    saveService
+  );
+
+  bindSubmit(
+    document.getElementById(
+      "appointmentForm"
+    ),
+    saveAppointment
+  );
+
+  bindSubmit(
+    document.getElementById(
+      "profileForm"
+    ),
+    updateProfile
+  );
+
+  bindSubmit(
+    document.getElementById(
+      "passwordForm"
+    ),
+    changePassword
+  );
+
+  bindSubmit(
+    document.getElementById(
+      "orgForm"
+    ),
+    async () => {
+      await saveSettings(
+        collectOrganizationSettings()
+      );
+    }
+  );
+
+  bindSubmit(
+    document.getElementById(
+      "adminForm"
+    ),
+    async () => {
+      await saveSettings(
+        collectAdminSettings()
+      );
+    }
+  );
+
+  bindSubmit(
+    document.getElementById(
+      "userForm"
+    ),
+    saveUser
+  );
+
+  document
+    .querySelectorAll(
+      "#generateReport," +
+      "#generateReportBtn," +
+      "[data-generate-report]"
+    )
+    .forEach((button) => {
+      if (
+        button.dataset
+          .amrashBound
+      ) {
+        return;
+      }
+
+      button.dataset
+        .amrashBound = "1";
+
+      button.addEventListener(
+        "click",
+        async (event) => {
+          event.preventDefault();
+          await generateReport();
+        }
+      );
+    });
+
+  document
+    .querySelectorAll(
+      "#saveAllSettings," +
+      "#saveSystemBtn," +
+      "#saveApptBtn," +
+      "[data-save-settings]"
+    )
+    .forEach((button) => {
+      if (
+        button.dataset
+          .amrashBound
+      ) {
+        return;
+      }
+
+      button.dataset
+        .amrashBound = "1";
+
+      button.addEventListener(
+        "click",
+        async (event) => {
+          event.preventDefault();
+
+          if (
+            button.id ===
+            "saveSystemBtn"
+          ) {
+            await saveSettings(
+              collectSystemSettings()
+            );
+
+            return;
+          }
+
+          if (
+            button.id ===
+            "saveApptBtn"
+          ) {
+            await saveSettings(
+              collectAppointmentSettings()
+            );
+
+            return;
+          }
+
+          await saveSettings();
+        }
+      );
+    });
+
+  const addUserButton =
+    document.getElementById(
+      "addUserBtn"
+    );
+
+  if (
+    addUserButton &&
+    !addUserButton.dataset
+      .amrashUserButtonBound
+  ) {
+    addUserButton.dataset
+      .amrashUserButtonBound = "1";
+
+    addUserButton.addEventListener(
+      "click",
+      () => openUserForm()
+    );
+  }
+
+  const createBackupButton =
+    document.getElementById(
+      "createBackupBtn"
+    );
+
+  if (
+    createBackupButton &&
+    !createBackupButton.dataset
+      .amrashBackupBound
+  ) {
+    createBackupButton.dataset
+      .amrashBackupBound = "1";
+
+    createBackupButton.addEventListener(
+      "click",
+      createBackup
+    );
+  }
+
+  const restoreBackupButton =
+    document.getElementById(
+      "restoreBackupBtn"
+    );
+
+  if (
+    restoreBackupButton &&
+    !restoreBackupButton.dataset
+      .amrashBackupRestoreBound
+  ) {
+    restoreBackupButton.dataset
+      .amrashBackupRestoreBound =
+      "1";
+
+    restoreBackupButton.addEventListener(
+      "click",
+      restoreBackup
+    );
+  }
+
+  const autoBackup =
+    document.getElementById(
+      "autoBackupToggle"
+    );
+
+  if (
+    autoBackup &&
+    !autoBackup.dataset
+      .amrashAutoBackupBound
+  ) {
+    autoBackup.dataset
+      .amrashAutoBackupBound =
+      "1";
+
+    autoBackup.addEventListener(
+      "change",
+      async () => {
+        await saveSettings({
+          autoBackup:
+            autoBackup.checked
+              ? "1"
+              : "0"
+        });
+      }
+    );
+  }
+}
+
+
+/* =========================================================
+26. SETTINGS HELPERS
+========================================================= */
+
+function collectOrganizationSettings() {
+  return {
+    organizationName:
+      Helpers.getValue(
+        "orgName"
+      ),
+    organizationTax:
+      Helpers.getValue(
+        "orgTax"
+      ),
+    organizationPhone:
+      Helpers.getValue(
+        "orgPhone"
+      ),
+    organizationEmail:
+      Helpers.getValue(
+        "orgEmail"
+      ),
+    organizationWebsite:
+      Helpers.getValue(
+        "orgWebsite"
+      ),
+    currency:
+      Helpers.getValue(
+        "orgCurrency"
+      ),
+    organizationAddress:
+      Helpers.getValue(
+        "orgAddress"
+      ),
+    organizationAbout:
+      Helpers.getValue(
+        "orgAbout"
+      )
+  };
+}
+
+function collectAdminSettings() {
+  return {
+    adminName:
+      Helpers.getValue(
+        "adminName"
+      ),
+    adminTitle:
+      Helpers.getValue(
+        "adminTitle"
+      ),
+    adminEmail:
+      Helpers.getValue(
+        "adminEmail"
+      ),
+    adminPhone:
+      Helpers.getValue(
+        "adminPhone"
+      ),
+    adminAvatar:
+      Helpers.getValue(
+        "adminAvatar"
+      ),
+    adminDisplayName:
+      Helpers.getValue(
+        "adminDisplayName"
+      ),
+    adminDisplayRole:
+      Helpers.getValue(
+        "adminDisplayRole"
+      )
+  };
+}
+
+function collectSystemSettings() {
+  return {
+    language:
+      Helpers.getValue(
+        "sysLang"
+      ),
+    timezone:
+      Helpers.getValue(
+        "sysTimezone"
+      ),
+    dateFormat:
+      Helpers.getValue(
+        "sysDateFormat"
+      ),
+    perPage:
+      Helpers.getValue(
+        "sysPerPage"
+      ),
+    notificationEmail:
+      document.getElementById(
+        "sysNotifEmail"
+      )?.checked
+        ? "1"
+        : "0",
+    sound:
+      document.getElementById(
+        "sysSound"
+      )?.checked
+        ? "1"
+        : "0",
+    darkMode:
+      document.getElementById(
+        "sysDark"
+      )?.checked
+        ? "1"
+        : "0"
+  };
+}
+
+function collectAppointmentSettings() {
+  return {
+    appointmentDuration:
+      Helpers.getValue(
+        "apptDuration"
+      ),
+    appointmentStart:
+      Helpers.getValue(
+        "apptStart"
+      ),
+    appointmentEnd:
+      Helpers.getValue(
+        "apptEnd"
+      ),
+    appointmentMaxPerDoctor:
+      Helpers.getValue(
+        "apptMaxPerDoctor"
+      ),
+    appointmentCancelWindow:
+      Helpers.getValue(
+        "apptCancelWindow"
+      ),
+    appointmentAllowOverlap:
+      document.getElementById(
+        "apptAllowOverlap"
+      )?.checked
+        ? "1"
+        : "0"
+  };
+}
+
+
+/* =========================================================
+27. EXPORT CSV / PRINT
+========================================================= */
+
+function exportTableToCSV(
+  table,
+  filename = "amrash-report.csv"
+) {
+  let target = table;
+
+  if (typeof table === "string") {
+    target =
+      document.querySelector(
+        table
+      ) ||
+      document.getElementById(
+        table
+      );
+  }
+
+  if (!target) {
+    Toast.warning(
+      "لا يوجد جدول لتصديره."
+    );
+    return;
+  }
+
+  const rows =
+    Array.from(
+      target.querySelectorAll("tr")
+    );
+
+  if (!rows.length) {
+    Toast.warning(
+      "لا توجد بيانات لتصديرها."
+    );
+    return;
+  }
+
+  const csv =
+    rows
+      .map((row) => {
+        const cells =
+          Array.from(
+            row.querySelectorAll(
+              "th,td"
+            )
+          );
+
+        return cells
+          .map((cell) => {
+            const value =
+              cell.innerText
+                .replace(
+                  /\s+/g,
+                  " "
+                )
+                .trim();
+
+            return `"${value.replace(
+              /"/g,
+              '""'
+            )}"`;
+          })
+          .join(",");
+      })
+      .join("\n");
+
+  const blob =
+    new Blob(
+      ["\uFEFF" + csv],
+      {
+        type:
+          "text/csv;charset=utf-8;"
+      }
+    );
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+  const link =
+    document.createElement("a");
 
   link.href = url;
   link.download = filename;
 
-  document.body.appendChild(link);
+  document.body.appendChild(
+    link
+  );
+
   link.click();
   link.remove();
 
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 500);
 
-  Toast.success("تم تصدير الملف بنجاح.");
+  Toast.success(
+    "تم تصدير الملف بنجاح."
+  );
+}
+
+function findExportTable() {
+  const selectors = [
+    "#reportsTable",
+    "#reportTable",
+    "#departmentTable",
+    "#appointmentsTable",
+    "#patientsTable",
+    "#doctorsTable",
+    "#servicesTable",
+    "#departmentsTable"
+  ];
+
+  for (const selector of selectors) {
+    const table =
+      document.querySelector(
+        selector
+      );
+
+    if (table) {
+      return table;
+    }
+  }
+
+  return null;
 }
 
 function initExports() {
-  document.addEventListener("click", (event) => {
-    const csvButton = event.target.closest("#exportCsvBtn,[data-export-csv]");
+  if (
+    document.body.dataset
+      .amrashExportsBound
+  ) {
+    return;
+  }
 
-    if (csvButton) {
-      event.preventDefault();
+  document.body.dataset
+    .amrashExportsBound = "1";
 
-      const table = document.querySelector(
-        "#reportsTable,#reportTable,#appointmentsTable,#patientsTable,#doctorsTable,#servicesTable,#departmentsTable",
-      );
+  document.addEventListener(
+    "click",
+    (event) => {
+      const csvButton =
+        event.target.closest(
+          "#exportCsvBtn,[data-export-csv]"
+        );
 
-      if (table) {
-        exportTableToCSV(table, "amrash-report.csv");
-      } else {
-        Toast.warning("لا يوجد جدول لتصديره.");
+      if (csvButton) {
+        event.preventDefault();
+
+        const table =
+          findExportTable();
+
+        if (table) {
+          exportTableToCSV(
+            table,
+            `amrash-${getCurrentPage().replace(
+              ".html",
+              ""
+            )}.csv`
+          );
+        } else {
+          Toast.warning(
+            "لا يوجد جدول لتصديره."
+          );
+        }
+
+        return;
       }
 
-      return;
+      const pdfButton =
+        event.target.closest(
+          "#exportPdfBtn,[data-export-pdf]"
+        );
+
+      if (pdfButton) {
+        event.preventDefault();
+
+        window.print();
+
+        return;
+      }
+
+      const printButton =
+        event.target.closest(
+          "[data-print]," +
+          "#printBtn," +
+          "#printReportBtn," +
+          "#printApptBtn"
+        );
+
+      if (printButton) {
+        event.preventDefault();
+
+        window.print();
+      }
     }
-
-    const pdfButton = event.target.closest("#exportPdfBtn,[data-export-pdf]");
-
-    if (pdfButton) {
-      event.preventDefault();
-      window.print();
-      return;
-    }
-
-    const printButton = event.target.closest(
-      "[data-print],#printBtn,#printReportBtn,#printApptBtn",
-    );
-
-    if (printButton) {
-      event.preventDefault();
-      window.print();
-    }
-  });
+  );
 }
 
+
 /* =========================================================
-27. DASHBOARD
+28. DASHBOARD
 ========================================================= */
 
 async function loadDashboard() {
   try {
-    const result = await API.get("/dashboard");
+    const result =
+      await API.get(
+        "/dashboard"
+      );
 
-    renderDashboardTables(result || {});
+    renderDashboardTables(
+      result || {}
+    );
   } catch (error) {
-    Toast.error(error.message);
+    console.error(
+      "Dashboard error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر تحميل لوحة التحكم."
+    );
   }
 }
 
-function renderDashboardTables(data) {
-  const statistics = data.statistics || data.stats || data;
+function renderDashboardTables(
+  data
+) {
+  const statistics =
+    data.statistics ||
+    data.stats ||
+    data;
 
   const values = {
-    totalPatients: statistics.totalPatients ?? statistics.patients ?? 0,
+    totalPatients:
+      statistics.totalPatients ??
+      statistics.total_patients ??
+      statistics.patients ??
+      0,
 
-    totalDoctors: statistics.totalDoctors ?? statistics.doctors ?? 0,
+    totalDoctors:
+      statistics.totalDoctors ??
+      statistics.total_doctors ??
+      statistics.doctors ??
+      0,
 
     totalAppointments:
-      statistics.totalAppointments ?? statistics.appointments ?? 0,
+      statistics.totalAppointments ??
+      statistics.total_appointments ??
+      statistics.appointments ??
+      0,
 
-    totalServices: statistics.totalServices ?? statistics.services ?? 0,
+    totalServices:
+      statistics.totalServices ??
+      statistics.total_services ??
+      statistics.services ??
+      0,
 
-    todayAppointments: statistics.todayAppointments ?? statistics.today ?? 0,
+    todayAppointments:
+      statistics.todayAppointments ??
+      statistics.today_appointments ??
+      statistics.today ??
+      0
   };
 
-  Object.entries(values).forEach(([key, value]) => {
-    Helpers.setText(key, value);
+  Object.entries(
+    values
+  ).forEach(([key, value]) => {
+    Helpers.setText(
+      key,
+      value
+    );
   });
 
-  const recentAppointments = data.recentAppointments || data.appointments || [];
+  const recentAppointments =
+    Array.isArray(
+      data.recentAppointments ||
+      data.recent_appointments ||
+      data.appointments
+    )
+      ? data.recentAppointments ||
+        data.recent_appointments ||
+        data.appointments
+      : [];
 
   const table =
-    document.getElementById("dashboardAppointmentsTableBody") ||
-    document.getElementById("recentAppointmentsTableBody");
+    document.getElementById(
+      "dashboardAppointmentsTableBody"
+    ) ||
+    document.getElementById(
+      "recentAppointmentsTableBody"
+    );
 
-  if (table && Array.isArray(recentAppointments)) {
-    table.innerHTML = "";
-
-    recentAppointments.slice(0, 10).forEach((appointment, index) => {
-      table.insertAdjacentHTML(
-        "beforeend",
-        `
-            <tr>
-
-              <td>
-                ${index + 1}
-              </td>
-
-              <td>
-                ${Helpers.escapeHTML(appointment.patient_name || "—")}
-              </td>
-
-              <td>
-                ${Helpers.escapeHTML(appointment.doctor_name || "—")}
-              </td>
-
-              <td>
-                ${Helpers.formatDate(
-                  appointment.appointment_date || appointment.date,
-                )}
-              </td>
-
-              <td>
-                ${Helpers.formatTime(
-                  appointment.appointment_time || appointment.time,
-                )}
-              </td>
-
-              <td>
-                ${Helpers.badge(appointment.status)}
-              </td>
-
-            </tr>
-            `,
-      );
-    });
+  if (!table) {
+    return;
   }
+
+  table.innerHTML =
+    recentAppointments.length
+      ? recentAppointments
+          .slice(0, 10)
+          .map(
+            (
+              appointment,
+              index
+            ) => `
+              <tr>
+                <td>${index + 1}</td>
+
+                <td>
+                  ${Helpers.escapeHTML(
+                    appointment.patient_name ||
+                    appointment.patient?.name ||
+                    "—"
+                  )}
+                </td>
+
+                <td>
+                  ${Helpers.escapeHTML(
+                    appointment.doctor_name ||
+                    appointment.doctor?.name ||
+                    "—"
+                  )}
+                </td>
+
+                <td>
+                  ${Helpers.formatDate(
+                    appointment.appointment_date ||
+                    appointment.date
+                  )}
+                </td>
+
+                <td>
+                  ${Helpers.formatTime(
+                    appointment.appointment_time ||
+                    appointment.time
+                  )}
+                </td>
+
+                <td>
+                  ${Helpers.badge(
+                    appointment.status
+                  )}
+                </td>
+              </tr>
+            `
+          )
+          .join("")
+      : `
+        <tr>
+          <td
+            colspan="10"
+            class="text-center text-muted py-4"
+          >
+            لا توجد مواعيد حالياً.
+          </td>
+        </tr>
+      `;
 }
 
+
 /* =========================================================
-28. BOOTSTRAP + MODAL FALLBACK
+29. BOOTSTRAP + MODAL FALLBACK
 ========================================================= */
 
 function initBootstrap() {
-  if (window.bootstrap) {
+  if (
+    window.bootstrap &&
+    window.bootstrap.Dropdown
+  ) {
     document
-      .querySelectorAll('[data-bs-toggle="dropdown"]')
+      .querySelectorAll(
+        '[data-bs-toggle="dropdown"]'
+      )
       .forEach((element) => {
         try {
-          bootstrap.Dropdown.getOrCreateInstance(element);
-        } catch {}
+          bootstrap.Dropdown
+            .getOrCreateInstance(
+              element
+            );
+        } catch (error) {
+          console.error(
+            "Dropdown error:",
+            error
+          );
+        }
+      });
+  }
+
+  if (
+    window.bootstrap &&
+    window.bootstrap.Modal
+  ) {
+    document
+      .querySelectorAll(".modal")
+      .forEach((modal) => {
+        try {
+          bootstrap.Modal
+            .getOrCreateInstance(
+              modal
+            );
+        } catch (error) {
+          console.error(
+            "Modal init error:",
+            error
+          );
+        }
       });
 
-    document.querySelectorAll(".modal").forEach((modal) => {
-      try {
-        bootstrap.Modal.getOrCreateInstance(modal);
-      } catch {}
-    });
-  } else {
-    document.addEventListener("click", (event) => {
-      const openButton = event.target.closest(
-        '[data-bs-toggle="modal"][data-bs-target]',
-      );
+    return;
+  }
+
+  if (
+    document.body.dataset
+      .amrashFallbackBound
+  ) {
+    return;
+  }
+
+  document.body.dataset
+    .amrashFallbackBound = "1";
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      const openButton =
+        event.target.closest(
+          '[data-bs-toggle="modal"][data-bs-target]'
+        );
 
       if (openButton) {
-        const target = openButton.getAttribute("data-bs-target");
+        const target =
+          openButton.getAttribute(
+            "data-bs-target"
+          );
 
         if (target) {
-          showModal(target.replace("#", ""));
+          showModal(
+            target.replace(
+              "#",
+              ""
+            )
+          );
         }
       }
 
-      const closeButton = event.target.closest(
-        '[data-bs-dismiss="modal"],.btn-close',
-      );
+      const closeButton =
+        event.target.closest(
+          '[data-bs-dismiss="modal"],.btn-close'
+        );
 
       if (closeButton) {
-        const modal = closeButton.closest(".modal");
+        const modal =
+          closeButton.closest(
+            ".modal"
+          );
 
         if (modal) {
-          hideModal(modal.id);
+          hideModal(
+            modal.id
+          );
         }
       }
-    });
+    }
+  );
+}
+
+
+/* =========================================================
+30. PROFILE
+========================================================= */
+
+async function loadProfile() {
+  try {
+    const result =
+      await API.get(
+        "/profile"
+      );
+
+    const user =
+      result?.user ||
+      result?.data ||
+      result;
+
+    if (!user) {
+      throw new Error(
+        "لم يتم العثور على بيانات المستخدم."
+      );
+    }
+
+    updateProfileUI(
+      user
+    );
+
+    const currentUser =
+      Auth.getUser();
+
+    Auth.setSession(
+      Auth.getToken(),
+      {
+        ...(currentUser || {}),
+        ...user
+      }
+    );
+
+    loadCurrentUser();
+  } catch (error) {
+    console.error(
+      "Load profile error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر تحميل بيانات الملف الشخصي."
+    );
   }
 }
 
-/* ==========================================
-   PROFILE
-========================================== */
-
-async function loadProfile() {
-    try {
-        const result = await API.get("/profile");
-
-        const user = result?.user;
-
-        if (!user) {
-            throw new Error("لم يتم العثور على بيانات المستخدم");
-        }
-
-        const name = user.name || "";
-        const role = user.role || "مستخدم";
-
-        const firstLetter = name.trim()
-            ? name.trim().charAt(0)
-            : "أ";
-
-        /* =========================
-           TOPBAR
-        ========================= */
-
-        const userName = document.getElementById("userName");
-        const userRole = document.getElementById("userRole");
-        const userAvatar = document.getElementById("userAvatar");
-
-        if (userName) {
-            userName.textContent = name;
-        }
-
-        if (userRole) {
-            userRole.textContent = getProfileRoleName(role);
-        }
-
-        if (userAvatar) {
-            userAvatar.textContent = firstLetter;
-        }
-
-
-        /* =========================
-           PROFILE CARD
-        ========================= */
-
-        const profileName = document.getElementById("profileName");
-        const profileRole = document.getElementById("profileRole");
-        const profileAvatar = document.getElementById("profileAvatar");
-
-        if (profileName) {
-            profileName.textContent = name;
-        }
-
-        if (profileRole) {
-            profileRole.textContent = getProfileRoleName(role);
-        }
-
-        if (profileAvatar) {
-            profileAvatar.textContent = firstLetter;
-        }
-
-
-        /* =========================
-           FORM
-        ========================= */
-
-        const profileFullName =
-            document.getElementById("profileFullName");
-
-        const profileEmail =
-            document.getElementById("profileEmail");
-
-        const profilePhone =
-            document.getElementById("profilePhone");
-
-        const profileJobTitle =
-            document.getElementById("profileJobTitle");
-
-        if (profileFullName) {
-            profileFullName.value = name;
-        }
-
-        if (profileEmail) {
-            profileEmail.value = user.email || "";
-        }
-
-        if (profilePhone) {
-            profilePhone.value = user.phone || "";
-        }
-
-        if (profileJobTitle) {
-            profileJobTitle.value = getProfileRoleName(role);
-            profileJobTitle.readOnly = true;
-        }
-
-    } catch (error) {
-
-        console.error("Load profile error:", error);
-
-        if (typeof Toast !== "undefined") {
-            Toast.error(
-                error.message || "تعذر تحميل بيانات الملف الشخصي."
-            );
-        }
-    }
+function getProfileRoleName(
+  role
+) {
+  return getRoleName(role);
 }
 
-
-/* ==========================================
-   PROFILE ROLE NAME
-========================================== */
-
-function getProfileRoleName(role) {
-
-    const roles = {
-        admin: "مدير النظام",
-        administrator: "مدير النظام",
-        manager: "المدير",
-        doctor: "طبيب",
-        nurse: "ممرض",
-        receptionist: "موظف استقبال",
-        staff: "موظف",
-        user: "مستخدم"
-    };
-
-    const normalizedRole =
-        String(role || "").trim().toLowerCase();
-
-    return roles[normalizedRole] || role || "مستخدم";
-}
-
-
-/* ==========================================
-   UPDATE PROFILE
-========================================== */
-
-async function saveProfile() {
-
-    const form =
-        document.getElementById("profileForm");
-
-    if (!form) {
-        return;
-    }
-
-    form.addEventListener("submit", async function (event) {
-
-        event.preventDefault();
-
-        const name =
-            document.getElementById("profileFullName")?.value.trim();
-
-        const email =
-            document.getElementById("profileEmail")?.value.trim();
-
-        const phone =
-            document.getElementById("profilePhone")?.value.trim();
-
-        if (!name || !email) {
-
-            if (typeof Toast !== "undefined") {
-                Toast.error(
-                    "الاسم الكامل والبريد الإلكتروني مطلوبان."
-                );
-            }
-
-            return;
-        }
-
-        const submitButton =
-            form.querySelector('button[type="submit"]');
-
-        const originalText =
-            submitButton ? submitButton.innerHTML : "";
-
-        try {
-
-            if (submitButton) {
-                submitButton.disabled = true;
-                submitButton.innerHTML = `
-                    <span class="spinner-border spinner-border-sm me-1"></span>
-                    جاري الحفظ...
-                `;
-            }
-
-            const result = await API.put("/profile", {
-                name,
-                email,
-                phone
-            });
-
-            if (result?.user) {
-
-                const user = result.user;
-
-                const currentUser =
-                    Auth.getUser();
-
-                const updatedUser = {
-                    ...(currentUser || {}),
-                    ...user
-                };
-
-                localStorage.setItem(
-                    "amrash_user",
-                    JSON.stringify(updatedUser)
-                );
-
-                updateProfileUI(updatedUser);
-            }
-
-            if (typeof Toast !== "undefined") {
-                Toast.success(
-                    result?.message ||
-                    "تم حفظ التغييرات بنجاح."
-                );
-            }
-
-        } catch (error) {
-
-            console.error(
-                "Update profile error:",
-                error
-            );
-
-            if (typeof Toast !== "undefined") {
-                Toast.error(
-                    error.message ||
-                    "تعذر حفظ بيانات الملف الشخصي."
-                );
-            }
-
-        } finally {
-
-            if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.innerHTML = originalText;
-            }
-        }
-
-    });
-}
-
-
-/* ==========================================
-   UPDATE PROFILE UI
-========================================== */
-
-function updateProfileUI(user) {
-
-    const name =
-        user?.name || "";
-
-    const role =
-        user?.role || "";
-
-    const firstLetter =
-        name.trim()
-            ? name.trim().charAt(0)
-            : "أ";
-
-
-    const userName =
-        document.getElementById("userName");
-
-    const userRole =
-        document.getElementById("userRole");
-
-    const userAvatar =
-        document.getElementById("userAvatar");
-
-    const profileName =
-        document.getElementById("profileName");
-
-    const profileRole =
-        document.getElementById("profileRole");
-
-    const profileAvatar =
-        document.getElementById("profileAvatar");
-
-
-    if (userName) {
-        userName.textContent = name;
-    }
-
-    if (userRole) {
-        userRole.textContent =
-            getProfileRoleName(role);
-    }
-
-    if (userAvatar) {
-        userAvatar.textContent =
-            firstLetter;
-    }
-
-    if (profileName) {
-        profileName.textContent =
-            name;
-    }
-
-    if (profileRole) {
-        profileRole.textContent =
-            getProfileRoleName(role);
-    }
-
-    if (profileAvatar) {
-        profileAvatar.textContent =
-            firstLetter;
-    }
-}
-
-
-/* ==========================================
-   CHANGE PASSWORD
-========================================== */
-
-async function initPasswordForm() {
-
-    const form =
-        document.getElementById("passwordForm");
-
-    if (!form) {
-        return;
-    }
-
-    form.addEventListener("submit", async function (event) {
-
-        event.preventDefault();
-
-        const currentPassword =
-            document.getElementById("currentPassword")?.value || "";
-
-        const newPassword =
-            document.getElementById("newPassword")?.value || "";
-
-        const confirmPassword =
-            document.getElementById("confirmPassword")?.value || "";
-
-
-        if (!currentPassword || !newPassword || !confirmPassword) {
-
-            if (typeof Toast !== "undefined") {
-                Toast.error(
-                    "يرجى تعبئة جميع حقول كلمة المرور."
-                );
-            }
-
-            return;
-        }
-
-
-        if (newPassword !== confirmPassword) {
-
-            if (typeof Toast !== "undefined") {
-                Toast.error(
-                    "كلمة المرور الجديدة وتأكيدها غير متطابقين."
-                );
-            }
-
-            return;
-        }
-
-
-        if (newPassword.length < 6) {
-
-            if (typeof Toast !== "undefined") {
-                Toast.error(
-                    "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل."
-                );
-            }
-
-            return;
-        }
-
-
-        const submitButton =
-            form.querySelector('button[type="submit"]');
-
-        const originalText =
-            submitButton ? submitButton.innerHTML : "";
-
-
-        try {
-
-            if (submitButton) {
-                submitButton.disabled = true;
-
-                submitButton.innerHTML = `
-                    <span class="spinner-border spinner-border-sm me-1"></span>
-                    جاري التغيير...
-                `;
-            }
-
-
-            const result =
-                await API.put("/profile/password", {
-                    currentPassword,
-                    newPassword
-                });
-
-
-            form.reset();
-
-
-            if (typeof Toast !== "undefined") {
-                Toast.success(
-                    result?.message ||
-                    "تم تغيير كلمة المرور بنجاح."
-                );
-            }
-
-
-        } catch (error) {
-
-            console.error(
-                "Change password error:",
-                error
-            );
-
-            if (typeof Toast !== "undefined") {
-                Toast.error(
-                    error.message ||
-                    "تعذر تغيير كلمة المرور."
-                );
-            }
-
-        } finally {
-
-            if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.innerHTML = originalText;
-            }
-        }
-
-    });
-}
 
 /* =========================================================
-29. MAIN INITIALIZATION
+31. UPDATE PROFILE
+========================================================= */
+
+async function updateProfile() {
+  const name =
+    document
+      .getElementById(
+        "profileFullName"
+      )
+      ?.value
+      .trim() || "";
+
+  const email =
+    document
+      .getElementById(
+        "profileEmail"
+      )
+      ?.value
+      .trim() || "";
+
+  const phone =
+    document
+      .getElementById(
+        "profilePhone"
+      )
+      ?.value
+      .trim() || "";
+
+  if (!name || !email) {
+    Toast.error(
+      "الاسم الكامل والبريد الإلكتروني مطلوبان."
+    );
+    return;
+  }
+
+  const form =
+    document.getElementById(
+      "profileForm"
+    );
+
+  const button =
+    form?.querySelector(
+      'button[type="submit"]'
+    );
+
+  const originalText =
+    button?.innerHTML || "";
+
+  try {
+    if (button) {
+      button.disabled = true;
+
+      button.innerHTML = `
+        <span
+          class="spinner-border spinner-border-sm me-1"
+        ></span>
+        جاري الحفظ...
+      `;
+    }
+
+    const result =
+      await API.put(
+        "/profile",
+        {
+          name,
+          email,
+          phone
+        }
+      );
+
+    const currentUser =
+      Auth.getUser();
+
+    const updatedUser = {
+      ...(currentUser || {}),
+      ...(result?.user || {}),
+      name,
+      email,
+      phone
+    };
+
+    Auth.setSession(
+      Auth.getToken(),
+      updatedUser
+    );
+
+    updateProfileUI(
+      updatedUser
+    );
+
+    Toast.success(
+      result?.message ||
+      "تم حفظ التغييرات بنجاح."
+    );
+  } catch (error) {
+    console.error(
+      "Update profile error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر حفظ بيانات الملف الشخصي."
+    );
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.innerHTML =
+        originalText;
+    }
+  }
+}
+
+function updateProfileUI(
+  user
+) {
+  const name =
+    user?.name ||
+    user?.username ||
+    "";
+
+  const role =
+    user?.role ||
+    "";
+
+  const initials =
+    getUserInitials(user);
+
+  document
+    .querySelectorAll(
+      "#userName,.u-name,[data-user-name]"
+    )
+    .forEach((element) => {
+      element.textContent =
+        name;
+    });
+
+  document
+    .querySelectorAll(
+      "#userRole,.u-role,[data-user-role]"
+    )
+    .forEach((element) => {
+      element.textContent =
+        getProfileRoleName(
+          role
+        );
+    });
+
+  document
+    .querySelectorAll(
+      "#userAvatar,.avatar,[data-user-avatar]"
+    )
+    .forEach((element) => {
+      if (user?.avatar) {
+        element.innerHTML = "";
+
+        const img =
+          document.createElement(
+            "img"
+          );
+
+        img.src =
+          user.avatar;
+
+        img.alt =
+          "Avatar";
+
+        img.style.cssText = `
+          width:100%;
+          height:100%;
+          object-fit:cover;
+          border-radius:50%;
+        `;
+
+        element.appendChild(img);
+      } else {
+        element.textContent =
+          initials;
+      }
+    });
+
+  Helpers.setText(
+    "profileName",
+    name
+  );
+
+  Helpers.setText(
+    "profileRole",
+    getProfileRoleName(
+      role
+    )
+  );
+
+  Helpers.setValue(
+    "profileFullName",
+    name
+  );
+
+  Helpers.setValue(
+    "profileEmail",
+    user?.email || ""
+  );
+
+  Helpers.setValue(
+    "profilePhone",
+    user?.phone || ""
+  );
+}
+
+
+/* =========================================================
+32. CHANGE PASSWORD
+========================================================= */
+
+async function changePassword() {
+  const currentPassword =
+    document.getElementById(
+      "currentPassword"
+    )?.value || "";
+
+  const newPassword =
+    document.getElementById(
+      "newPassword"
+    )?.value || "";
+
+  const confirmPassword =
+    document.getElementById(
+      "confirmPassword"
+    )?.value || "";
+
+  if (
+    !currentPassword ||
+    !newPassword ||
+    !confirmPassword
+  ) {
+    Toast.error(
+      "يرجى تعبئة جميع حقول كلمة المرور."
+    );
+    return;
+  }
+
+  if (
+    newPassword !==
+    confirmPassword
+  ) {
+    Toast.error(
+      "كلمة المرور الجديدة وتأكيدها غير متطابقين."
+    );
+    return;
+  }
+
+  if (
+    newPassword.length < 6
+  ) {
+    Toast.error(
+      "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل."
+    );
+    return;
+  }
+
+  const form =
+    document.getElementById(
+      "passwordForm"
+    );
+
+  const button =
+    form?.querySelector(
+      'button[type="submit"],#changePasswordBtn'
+    );
+
+  const originalText =
+    button?.innerHTML || "";
+
+  try {
+    if (button) {
+      button.disabled = true;
+
+      button.innerHTML = `
+        <span
+          class="spinner-border spinner-border-sm me-1"
+        ></span>
+        جاري التغيير...
+      `;
+    }
+
+    const result =
+      await API.put(
+        "/profile/password",
+        {
+          currentPassword,
+          newPassword
+        }
+      );
+
+    form?.reset();
+
+    Toast.success(
+      result?.message ||
+      "تم تغيير كلمة المرور بنجاح."
+    );
+  } catch (error) {
+    console.error(
+      "Change password error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر تغيير كلمة المرور."
+    );
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.innerHTML =
+        originalText;
+    }
+  }
+}
+
+function initProfileForm() {
+  const form = document.getElementById("profileForm");
+
+  if (!form) {
+    return;
+  }
+
+  bindSubmit(form, updateProfile, "amrashProfileBound");
+}
+
+function initPasswordForm() {
+  const form =
+    document.getElementById(
+      "passwordForm"
+    );
+
+  if (!form) {
+    return;
+  }
+
+  if (
+    form.dataset
+      .amrashPasswordBound
+  ) {
+    return;
+  }
+
+  bindSubmit(
+    form,
+    changePassword,
+    "amrashPasswordBound"
+  );
+
+  document
+    .querySelectorAll(
+      ".password-toggle[data-target]"
+    )
+    .forEach((button) => {
+      if (
+        button.dataset
+          .amrashToggleBound
+      ) {
+        return;
+      }
+
+      button.dataset
+        .amrashToggleBound = "1";
+
+      button.addEventListener(
+        "click",
+        (event) => {
+          event.preventDefault();
+
+          const targetId =
+            button.dataset.target;
+
+          const input =
+            document.getElementById(
+              targetId
+            );
+
+          if (!input) {
+            return;
+          }
+
+          const visible =
+            input.type ===
+            "text";
+
+          input.type =
+            visible
+              ? "password"
+              : "text";
+
+          const icon = button.querySelector("i");
+
+          if (icon) {
+            icon.className = visible ? "bi bi-eye" : "bi bi-eye-slash";
+          }
+
+          if (icon) {
+            icon.className =
+              visible
+                ? "bi bi-eye"
+                : "bi bi-eye-slash";
+          }
+        }
+      );
+    });
+}
+
+
+/* =========================================================
+33. SETTINGS SECTIONS
+========================================================= */
+
+function initSettingsSections() {
+  const settingsNav =
+    document.getElementById(
+      "settingsNav"
+    );
+
+  if (settingsNav) {
+    settingsNav
+      .querySelectorAll(
+        "[data-pane]"
+      )
+      .forEach((button) => {
+        if (
+          button.dataset
+            .amrashSettingsBound
+        ) {
+          return;
+        }
+
+        button.dataset
+          .amrashSettingsBound =
+          "1";
+
+        button.addEventListener(
+          "click",
+          (event) => {
+            event.preventDefault();
+
+            const pane =
+              button.dataset.pane;
+
+            if (!pane) {
+              return;
+            }
+
+            settingsNav
+              .querySelectorAll(
+                "[data-pane]"
+              )
+              .forEach(
+                (item) =>
+                  item.classList.remove(
+                    "active"
+                  )
+              );
+
+            button.classList.add(
+              "active"
+            );
+
+            document
+              .querySelectorAll(
+                "[id^='pane-']"
+              )
+              .forEach((section) => {
+                section.classList.toggle(
+                  "d-none",
+                  section.id !==
+                    `pane-${pane}`
+                );
+              });
+          }
+        );
+      });
+
+    const active =
+      settingsNav.querySelector(
+        "[data-pane].active"
+      );
+
+    if (active) {
+      active.click();
+    } else {
+      const first =
+        settingsNav.querySelector(
+          "[data-pane]"
+        );
+
+      first?.click();
+    }
+  }
+
+  /* Generic support */
+  const buttons =
+    document.querySelectorAll(
+      "[data-settings-target]," +
+      "[data-section-target]," +
+      ".settings-tab"
+    );
+
+  buttons.forEach((button) => {
+    if (
+      button.dataset
+        .amrashGenericSettingsBound
+    ) {
+      return;
+    }
+
+    button.dataset
+      .amrashGenericSettingsBound =
+      "1";
+
+    button.addEventListener(
+      "click",
+      (event) => {
+        event.preventDefault();
+
+        const target =
+          button.dataset
+            .settingsTarget ||
+          button.dataset
+            .sectionTarget ||
+          button.getAttribute(
+            "data-target"
+          );
+
+        if (!target) {
+          return;
+        }
+
+        document
+          .querySelectorAll(
+            "[data-settings-section],.settings-section"
+          )
+          .forEach((section) => {
+            const id =
+              section.id ||
+              section.dataset
+                .settingsSection;
+
+            const match =
+              id === target ||
+              `#${id}` === target;
+
+            section.classList.toggle(
+              "active",
+              match
+            );
+
+            section.classList.toggle(
+              "d-none",
+              !match
+            );
+          });
+
+        buttons.forEach((item) => {
+          item.classList.remove(
+            "active"
+          );
+        });
+
+        button.classList.add(
+          "active"
+        );
+      }
+    );
+  });
+}
+
+
+/* =========================================================
+34. USERS
+========================================================= */
+
+async function loadUsers() {
+  const table =
+    document.getElementById(
+      "usersTableBody"
+    );
+
+  if (!table) {
+    return;
+  }
+
+  try {
+    const result =
+      await API.get(
+        "/users"
+      );
+
+    usersData =
+      Array.isArray(result)
+        ? result
+        : result?.users ||
+          result?.data ||
+          [];
+
+    renderUsers();
+  } catch (error) {
+    console.error(
+      "Users error:",
+      error
+    );
+
+    table.innerHTML = `
+      <tr>
+        <td
+          colspan="10"
+          class="text-center text-muted py-4"
+        >
+          تعذر تحميل المستخدمين.
+        </td>
+      </tr>
+    `;
+
+    Toast.error(
+      error.message ||
+      "تعذر تحميل المستخدمين."
+    );
+  }
+}
+
+function renderUsers() {
+  const table =
+    document.getElementById(
+      "usersTableBody"
+    );
+
+  if (!table) {
+    return;
+  }
+
+  table.innerHTML =
+    usersData.length
+      ? usersData
+          .map(
+            (user, index) => `
+              <tr>
+                <td>${index + 1}</td>
+
+                <td>
+                  ${Helpers.escapeHTML(
+                    user.name ||
+                    user.username ||
+                    "—"
+                  )}
+                </td>
+
+                <td>
+                  ${Helpers.escapeHTML(
+                    user.email ||
+                    "—"
+                  )}
+                </td>
+
+                <td>
+                  ${Helpers.escapeHTML(
+                    getRoleName(
+                      user.role
+                    )
+                  )}
+                </td>
+
+                <td>
+                  ${Helpers.escapeHTML(
+                    user.phone ||
+                    "—"
+                  )}
+                </td>
+
+                <td>
+                  ${Helpers.badge(
+                    user.status
+                  )}
+                </td>
+
+                <td>
+                  <div class="d-flex gap-1">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      data-edit-user="${Helpers.escapeHTML(
+                        user.id
+                      )}"
+                    >
+                      <i class="bi bi-pencil"></i>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      data-delete-user="${Helpers.escapeHTML(
+                        user.id
+                      )}"
+                    >
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `
+          )
+          .join("")
+      : `
+        <tr>
+          <td
+            colspan="10"
+            class="text-center text-muted py-4"
+          >
+            لا توجد حسابات مستخدمين.
+          </td>
+        </tr>
+      `;
+}
+
+function openUserForm(
+  user = null
+) {
+  editingUserId =
+    user?.id || null;
+
+  Helpers.setValue(
+    "uName",
+    user?.name || ""
+  );
+
+  Helpers.setValue(
+    "uEmail",
+    user?.email || ""
+  );
+
+  Helpers.setValue(
+    "uRole",
+    user?.role || "staff"
+  );
+
+  Helpers.setValue(
+    "uStatus",
+    user?.status || "active"
+  );
+
+  Helpers.setValue(
+    "uPass",
+    ""
+  );
+
+  const title =
+    document.getElementById(
+      "userModalLabel"
+    );
+
+  if (title) {
+    title.textContent =
+      user
+        ? "تعديل المستخدم"
+        : "إضافة مستخدم";
+  }
+
+  showModal("userModal");
+}
+
+async function saveUser() {
+  const name =
+    Helpers.getValue(
+      "uName"
+    ).trim();
+
+  const email =
+    Helpers.getValue(
+      "uEmail"
+    ).trim();
+
+  const role =
+    Helpers.getValue(
+      "uRole"
+    ) || "staff";
+
+  const status =
+    Helpers.getValue(
+      "uStatus"
+    ) || "active";
+
+  const password =
+    Helpers.getValue(
+      "uPass"
+    );
+
+  if (!name) {
+    Toast.error(
+      "اسم المستخدم مطلوب."
+    );
+    return;
+  }
+
+  if (!email) {
+    Toast.error(
+      "البريد الإلكتروني مطلوب."
+    );
+    return;
+  }
+
+  try {
+    if (editingUserId) {
+      const body = {
+        name,
+        email,
+        role,
+        status
+      };
+
+      if (password) {
+        if (password.length < 6) {
+          Toast.error(
+            "كلمة المرور يجب أن تكون 6 أحرف على الأقل."
+          );
+          return;
+        }
+
+        body.password =
+          password;
+      }
+
+      await API.put(
+        `/users/${encodeURIComponent(
+          editingUserId
+        )}`,
+        body
+      );
+
+      Toast.success(
+        "تم تحديث المستخدم بنجاح."
+      );
+    } else {
+      if (!password) {
+        Toast.error(
+          "كلمة المرور مطلوبة عند إضافة مستخدم."
+        );
+        return;
+      }
+
+      if (password.length < 6) {
+        Toast.error(
+          "كلمة المرور يجب أن تكون 6 أحرف على الأقل."
+        );
+        return;
+      }
+
+      const username =
+        email
+          .split("@")[0]
+          .replace(
+            /[^a-zA-Z0-9._-]/g,
+            ""
+          ) ||
+        `user${Date.now()}`;
+
+      await API.post(
+        "/users",
+        {
+          name,
+          username,
+          email,
+          password,
+          role,
+          status
+        }
+      );
+
+      Toast.success(
+        "تمت إضافة المستخدم بنجاح."
+      );
+    }
+
+    hideModal("userModal");
+
+    editingUserId = null;
+
+    await loadUsers();
+  } catch (error) {
+    console.error(
+      "Save user error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر حفظ المستخدم."
+    );
+  }
+}
+
+
+/* =========================================================
+35. BACKUP
+========================================================= */
+
+async function createBackup() {
+  const button =
+    document.getElementById(
+      "createBackupBtn"
+    );
+
+  const originalText =
+    button?.innerHTML || "";
+
+  try {
+    if (button) {
+      button.disabled = true;
+
+      button.innerHTML = `
+        <span
+          class="spinner-border spinner-border-sm me-1"
+        ></span>
+        جاري إنشاء النسخة...
+      `;
+    }
+
+    const [
+      departments,
+      doctors,
+      patients,
+      services,
+      appointments,
+      settings
+    ] = await Promise.all([
+      API.get("/departments"),
+      API.get("/doctors"),
+      API.get("/patients"),
+      API.get("/services"),
+      API.get("/appointments"),
+      API.get("/settings")
+    ]);
+
+    const backup = {
+      application: "AmRash",
+      version: "1.0",
+      createdAt:
+        new Date().toISOString(),
+
+      departments:
+        Array.isArray(departments)
+          ? departments
+          : departments?.departments ||
+            departments?.data ||
+            [],
+
+      doctors:
+        Array.isArray(doctors)
+          ? doctors
+          : doctors?.doctors ||
+            doctors?.data ||
+            [],
+
+      patients:
+        Array.isArray(patients)
+          ? patients
+          : patients?.patients ||
+            patients?.data ||
+            [],
+
+      services:
+        Array.isArray(services)
+          ? services
+          : services?.services ||
+            services?.data ||
+            [],
+
+      appointments:
+        Array.isArray(appointments)
+          ? appointments
+          : appointments?.appointments ||
+            appointments?.data ||
+            [],
+
+      settings:
+        settings?.settings ||
+        settings?.data ||
+        settings ||
+        {}
+    };
+
+    const blob =
+      new Blob(
+        [
+          JSON.stringify(
+            backup,
+            null,
+            2
+          )
+        ],
+        {
+          type:
+            "application/json;charset=utf-8"
+        }
+      );
+
+    const url =
+      URL.createObjectURL(
+        blob
+      );
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+    const date =
+      new Date()
+        .toISOString()
+        .replace(
+          /[:.]/g,
+          "-"
+        );
+
+    link.href = url;
+    link.download =
+      `amrash-backup-${date}.json`;
+
+    document.body.appendChild(
+      link
+    );
+
+    link.click();
+    link.remove();
+
+    setTimeout(() => {
+      URL.revokeObjectURL(
+        url
+      );
+    }, 500);
+
+    Toast.success(
+      "تم إنشاء النسخة الاحتياطية وتنزيلها."
+    );
+  } catch (error) {
+    console.error(
+      "Create backup error:",
+      error
+    );
+
+    Toast.error(
+      error.message ||
+      "تعذر إنشاء النسخة الاحتياطية."
+    );
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.innerHTML =
+        originalText;
+    }
+  }
+}
+
+function restoreBackup() {
+  const input =
+    document.createElement(
+      "input"
+    );
+
+  input.type = "file";
+  input.accept =
+    "application/json,.json";
+
+  input.addEventListener(
+    "change",
+    async () => {
+      const file =
+        input.files?.[0];
+
+      if (!file) {
+        return;
+      }
+
+      try {
+        const text =
+          await file.text();
+
+        const backup =
+          JSON.parse(text);
+
+        if (
+          backup?.application !==
+          "AmRash"
+        ) {
+          throw new Error(
+            "هذا الملف ليس نسخة احتياطية صالحة لنظام AmRash."
+          );
+        }
+
+        /*
+          الاستعادة هنا تحفظ نسخة البيانات محلياً
+          وتتحقق من سلامة الملف قبل إرسال أي بيانات.
+          لا يتم حذف البيانات الحالية تلقائياً.
+        */
+
+        sessionStorage.setItem(
+          "amrash_restore_preview",
+          JSON.stringify(
+            backup
+          )
+        );
+
+        const message =
+          [
+            `الأقسام: ${
+              backup.departments?.length || 0
+            }`,
+            `الأطباء: ${
+              backup.doctors?.length || 0
+            }`,
+            `المرضى: ${
+              backup.patients?.length || 0
+            }`,
+            `الخدمات: ${
+              backup.services?.length || 0
+            }`,
+            `المواعيد: ${
+              backup.appointments?.length || 0
+            }`
+          ].join(" — ");
+
+        Toast.success(
+          `تم التحقق من النسخة الاحتياطية: ${message}`
+        );
+      } catch (error) {
+        console.error(
+          "Restore backup error:",
+          error
+        );
+
+        Toast.error(
+          error.message ||
+          "ملف النسخة الاحتياطية غير صالح."
+        );
+      }
+    }
+  );
+
+  input.click();
+}
+
+async function loadBackupList() {
+  const table =
+    document.getElementById(
+      "backupTableBody"
+    );
+
+  if (!table) {
+    return;
+  }
+
+  /*
+    النسخ التي يتم إنشاؤها من الواجهة
+    يتم تنزيلها كملف JSON مباشرة.
+    لذلك لا نفترض وجود endpoint غير موجود
+    في الخادم لعرض سجل النسخ.
+  */
+
+  table.innerHTML = `
+    <tr>
+      <td
+        colspan="10"
+        class="text-center text-muted py-4"
+      >
+        يتم حفظ النسخ الاحتياطية التي تنشئينها
+        كملفات JSON على جهازك.
+      </td>
+    </tr>
+  `;
+}
+
+
+/* =========================================================
+36. MAIN INITIALIZATION
 ========================================================= */
 
 async function initAmRash() {
+  initLoginPage();
+
   if (!Auth.requireAuth()) {
-    initLoginPage();
     return;
   }
+
+  Toast.init();
 
   initActiveSidebar();
   initSidebar();
@@ -3792,40 +7995,64 @@ async function initAmRash() {
   initProfileLinks();
   initCurrentDate();
   initNotifications();
-  initLoginPage();
+
   initPageEvents();
   initFilters();
   initAppointmentTabs();
+
   initForms();
   initExports();
   initBootstrap();
 
-  const page = getCurrentPage();
+  initProfileForm();
+  initPasswordForm();
+  initSettingsSections();
 
-  if (page === "dashboard.html") {
+  const page =
+    getCurrentPage();
+
+  if (
+    page ===
+    "dashboard.html"
+  ) {
     await loadDashboard();
   }
 
-  if (page === "departments.html") {
+  if (
+    page ===
+    "departments.html"
+  ) {
     await loadDepartments();
   }
 
-  if (page === "doctors.html") {
+  if (
+    page ===
+    "doctors.html"
+  ) {
     await loadDepartments();
     await loadDoctors();
   }
 
-  if (page === "patients.html") {
+  if (
+    page ===
+    "patients.html"
+  ) {
     await loadDepartments();
     await loadPatients();
   }
 
-  if (page === "services.html") {
+  if (
+    page ===
+    "services.html"
+  ) {
     await loadDepartments();
     await loadServices();
   }
 
-  if (page === "appointments.html") {
+  if (
+    page ===
+    "appointments.html"
+  ) {
     await loadDepartments();
     await loadDoctors();
     await loadPatients();
@@ -3833,35 +8060,57 @@ async function initAmRash() {
     await loadAppointments();
   }
 
-if (page === "profile.html") {
-  await loadProfile();
-  await saveProfile();
-  await initPasswordForm();
-}
+  if (
+    page ===
+    "profile.html"
+  ) {
+    await loadProfile();
+  }
 
-  if (page === "reports.html") {
+  if (
+    page ===
+    "reports.html"
+  ) {
     await loadDepartments();
   }
 
-  if (page === "settings.html") {
+  if (
+    page ===
+    "settings.html"
+  ) {
     await loadSettings();
   }
 }
 
+
 /* =========================================================
-30. GLOBAL ERROR HANDLING
+37. GLOBAL ERROR HANDLING
 ========================================================= */
 
-window.addEventListener("unhandledrejection", (event) => {
-  console.error("Unhandled Promise Rejection:", event.reason);
-});
+window.addEventListener(
+  "unhandledrejection",
+  (event) => {
+    console.error(
+      "Unhandled Promise Rejection:",
+      event.reason
+    );
+  }
+);
 
-window.addEventListener("error", (event) => {
-  console.error("Global JavaScript Error:", event.error || event.message);
-});
+window.addEventListener(
+  "error",
+  (event) => {
+    console.error(
+      "Global JavaScript Error:",
+      event.error ||
+      event.message
+    );
+  }
+);
+
 
 /* =========================================================
-31. GLOBAL EXPORTS
+38. GLOBAL EXPORTS
 ========================================================= */
 
 window.AmRash = {
@@ -3877,6 +8126,9 @@ window.AmRash = {
   loadServices,
   loadAppointments,
   loadDashboard,
+  loadProfile,
+  loadSettings,
+  loadUsers,
 
   generateReport,
   exportTableToCSV,
@@ -3886,19 +8138,44 @@ window.AmRash = {
   openPatientForm,
   openServiceForm,
   openAppointmentForm,
+  openProfileModal,
+  openUserForm,
 
   saveDepartment,
   saveDoctor,
   savePatient,
   saveService,
   saveAppointment,
+  saveSettings,
+  saveUser,
+
+  createBackup,
+  restoreBackup,
 
   showModal,
   hideModal,
+
+  initLogout,
+  initProfileForm,
+  initPasswordForm
 };
+
 
 /* =========================================================
 START
 ========================================================= */
 
-document.addEventListener("DOMContentLoaded", initAmRash);
+if (
+  document.readyState ===
+  "loading"
+) {
+  document.addEventListener(
+    "DOMContentLoaded",
+    initAmRash,
+    {
+      once: true
+    }
+  );
+} else {
+  initAmRash();
+}

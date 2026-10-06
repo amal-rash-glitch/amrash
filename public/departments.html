@@ -126,21 +126,27 @@
 </div>
 
 <!-- نافذة إضافة/تعديل قسم -->
-<div class="modal fade" id="departmentModal" tabindex="-1">
+<div class="modal fade" id="departmentModal" tabindex="-1" aria-labelledby="departmentModalTitle" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
+
       <div class="modal-header">
         <h5 class="modal-title" id="departmentModalTitle">إضافة قسم جديد</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
       </div>
+
       <form id="departmentForm">
+
         <div class="modal-body">
           <input type="hidden" id="departmentId">
+
           <div class="row g-3">
+
             <div class="col-md-8">
               <label class="form-label">اسم القسم *</label>
               <input type="text" class="form-control" id="depName" required>
             </div>
+
             <div class="col-md-4">
               <label class="form-label">الحالة</label>
               <select class="form-select" id="depStatus">
@@ -148,10 +154,12 @@
                 <option value="inactive">معطّل</option>
               </select>
             </div>
+
             <div class="col-12">
               <label class="form-label">الوصف</label>
               <textarea class="form-control" id="depDescription" rows="2"></textarea>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">أيقونة القسم</label>
               <select class="form-select" id="depIcon">
@@ -167,19 +175,38 @@
                 <option value="bi-droplet">مختبر — bi-droplet</option>
               </select>
             </div>
+
             <div class="col-md-6">
               <label class="form-label">معاينة</label>
-              <div class="d-flex align-items-center gap-2 p-2" style="border:1px solid var(--brand-border);border-radius:10px">
-                <span style="font-size:22px;color:var(--brand-primary)"><i class="bi bi-heart-pulse" id="iconPreview"></i></span>
-                <span style="font-size:14px;color:var(--brand-gray)">شكل الأيقونة في القائمة</span>
+
+              <div
+                class="d-flex align-items-center gap-2 p-2"
+                style="border:1px solid var(--brand-border);border-radius:10px"
+              >
+                <span style="font-size:22px;color:var(--brand-primary)">
+                  <i class="bi bi-heart-pulse" id="iconPreview"></i>
+                </span>
+
+                <span style="font-size:14px;color:var(--brand-gray)">
+                  شكل الأيقونة في القائمة
+                </span>
               </div>
             </div>
+
           </div>
         </div>
+
         <div class="modal-footer">
-          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">إلغاء</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">
+            إلغاء
+          </button>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>
+            حفظ
+          </button>
         </div>
+
       </form>
     </div>
   </div>
@@ -221,6 +248,6 @@
 
 
 <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
-<script src="JS/app.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
